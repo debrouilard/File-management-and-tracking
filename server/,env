@@ -1,0 +1,15 @@
+# Database connection
+DATABASE_URL="postgresql://postgres:yourpassword@localhost:5173/aau_file_management?schema=public"
+
+# JWT config
+JWT_SECRET="a8fK#92lPq!xZ0@secureKey"
+JWT_EXPIRES_IN="7d"
+
+# Backend server port
+PORT=4000
+
+# Frontend origin for CORS
+CLIENT_ORIGIN="http://localhost:5173"
+
+# Max file upload size (optional)
+MAX_UPLOAD_MB=10

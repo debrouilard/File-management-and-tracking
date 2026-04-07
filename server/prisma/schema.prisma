@@ -1,0 +1,81 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  STAFF
+}
+
+enum FileStatus {
+  PENDING
+  SENT
+  RECEIVED
+  REJECTED
+}
+
+model Department {
+  id            String       @id @default(cuid())
+  name          String
+  prefix        String       @unique
+  users         User[]
+  sentFiles     FileRecord[] @relation("SenderDept")
+  receivedFiles FileRecord[] @relation("ReceiverDept")
+}
+
+model User {
+  id             String         @id @default(cuid())
+  name           String
+  email          String         @unique
+  password       String
+  role           Role
+  departmentId   String
+  department     Department     @relation(fields: [departmentId], references: [id])
+  notifications  Notification[]
+  createdAt      DateTime       @default(now())
+}
+
+model FileRecord {
+  id             String       @id @default(cuid())
+  fileId         String       @unique
+  title          String
+  description    String?
+  filePath       String
+  originalName   String
+  status         FileStatus   @default(PENDING)
+  senderDeptId   String
+  receiverDeptId String?
+  senderDept     Department   @relation("SenderDept", fields: [senderDeptId], references: [id])
+  receiverDept   Department?  @relation("ReceiverDept", fields: [receiverDeptId], references: [id])
+  createdAt      DateTime     @default(now())
+  histories      FileHistory[]
+}
+
+model FileHistory {
+  id           String     @id @default(cuid())
+  fileId       String
+  fileRecordId String
+  fileRecord   FileRecord @relation(fields: [fileRecordId], references: [id], onDelete: Cascade)
+  action       String
+  timestamp    DateTime   @default(now())
+
+  @@index([fileRecordId])
+  @@index([fileId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  message   String
+  fileId    String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId, read])
+}
