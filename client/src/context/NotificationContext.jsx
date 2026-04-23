@@ -43,17 +43,17 @@ export function NotificationProvider({ children }) {
       setItems((prev) => [
         {
           id: payload.notificationId,
-          fileId: payload.fileId,
+          fileRecordId: payload.fileRecordId,
+          title: payload.title,
           message: payload.message,
+          type: payload.type,
           read: payload.read,
           createdAt: payload.timestamp,
         },
         ...prev.filter((x) => x.id !== payload.notificationId),
       ]);
     };
-    s.on("file_sent", push);
-    s.on("file_received", push);
-    s.on("file_rejected", push);
+    s.on("notification", push);
     return () => s.disconnect();
   }, [token]);
 

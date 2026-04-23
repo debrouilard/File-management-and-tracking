@@ -33,7 +33,10 @@ export function NotificationsPage() {
                 {n.message}
               </p>
               <p className="text-xs text-ink-500 mt-1 font-mono">
-                {n.fileId} · {new Date(n.createdAt).toLocaleString()}
+                {n.fileRecord?.senderDept?.prefix && n.fileRecord?.fileNumber != null
+                  ? `${n.fileRecord.senderDept.prefix}-${n.fileRecord.fileNumber}`
+                  : "—"}{" "}
+                · {new Date(n.createdAt).toLocaleString()}
               </p>
             </div>
             <div className="flex items-center gap-3">
@@ -46,9 +49,11 @@ export function NotificationsPage() {
                   Mark read
                 </button>
               )}
-              <Link to={`/search?q=${encodeURIComponent(n.fileId)}`} className="text-xs text-ink-500 hover:text-accent">
-                Locate file
-              </Link>
+              {n.fileRecordId && (
+                <Link to={`/files/${n.fileRecordId}`} className="text-xs text-ink-500 hover:text-accent">
+                  Open file
+                </Link>
+              )}
             </div>
           </div>
         ))}

@@ -9,73 +9,137 @@ datasource db {
 
 enum Role {
   ADMIN
+  DEPARTMENT_HEAD
   STAFF
 }
 
+enum FilePriority {
+  HIGH
+  MEDIUM
+  LOW
+}
+
 enum FileStatus {
-  PENDING
+  DRAFT
   SENT
   RECEIVED
+  UNDER_REVIEW
+  APPROVED
   REJECTED
+  ARCHIVED
+}
+
+enum NotificationType {
+  FILE_SENT
+  FILE_RECEIVED
+  STATUS_CHANGED
+  APPROVAL
+  REJECTION
+  HIGH_PRIORITY
 }
 
 model Department {
-  id            String       @id @default(cuid())
+  id            String         @id @default(cuid())
   name          String
-  prefix        String       @unique
+  prefix        String         @unique
   users         User[]
-  sentFiles     FileRecord[] @relation("SenderDept")
-  receivedFiles FileRecord[] @relation("ReceiverDept")
+  sentFiles     FileRecord[]     @relation("SenderDept")
+  receivedFiles FileRecord[]     @relation("ReceiverDept")
+  transfersFrom FileTransfer[]   @relation("XferFrom")
+  transfersTo   FileTransfer[]   @relation("XferTo")
+  createdAt     DateTime         @default(now())
 }
 
 model User {
-  id             String         @id @default(cuid())
-  name           String
-  email          String         @unique
-  password       String
-  role           Role
-  departmentId   String
-  department     Department     @relation(fields: [departmentId], references: [id])
-  notifications  Notification[]
-  createdAt      DateTime       @default(now())
+  id                  String         @id @default(cuid())
+  name                String
+  email               String         @unique
+  password            String
+  role                Role
+  departmentId        String
+  department          Department     @relation(fields: [departmentId], references: [id])
+  mustResetPassword   Boolean        @default(true)
+  notifications       Notification[]
+  auditLogs           AuditLog[]
+  createdFiles        FileRecord[]     @relation("CreatedBy")
+  fileTransfers       FileTransfer[]
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
 }
 
 model FileRecord {
-  id             String       @id @default(cuid())
-  fileId         String       @unique
+  id             String         @id @default(cuid())
+  fileNumber     Int            @unique @default(autoincrement())
   title          String
   description    String?
-  filePath       String
-  originalName   String
-  status         FileStatus   @default(PENDING)
+  priority       FilePriority   @default(MEDIUM)
+  status         FileStatus     @default(DRAFT)
   senderDeptId   String
   receiverDeptId String?
-  senderDept     Department   @relation("SenderDept", fields: [senderDeptId], references: [id])
-  receiverDept   Department?  @relation("ReceiverDept", fields: [receiverDeptId], references: [id])
-  createdAt      DateTime     @default(now())
-  histories      FileHistory[]
+  senderDept     Department     @relation("SenderDept", fields: [senderDeptId], references: [id])
+  receiverDept   Department?    @relation("ReceiverDept", fields: [receiverDeptId], references: [id])
+  createdById    String
+  createdBy      User           @relation("CreatedBy", fields: [createdById], references: [id])
+  filePath       String
+  originalName   String
+  mimeType       String?
+  sizeBytes      Int?
+  transfers      FileTransfer[]
+  notifications  Notification[]
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@index([senderDeptId])
+  @@index([receiverDeptId])
+  @@index([status])
+  @@index([priority])
+  @@index([createdAt])
 }
 
-model FileHistory {
-  id           String     @id @default(cuid())
-  fileId       String
-  fileRecordId String
-  fileRecord   FileRecord @relation(fields: [fileRecordId], references: [id], onDelete: Cascade)
-  action       String
-  timestamp    DateTime   @default(now())
+model FileTransfer {
+  id                 String     @id @default(cuid())
+  fileRecordId       String
+  fileRecord         FileRecord @relation(fields: [fileRecordId], references: [id], onDelete: Cascade)
+  fromDeptId         String
+  toDeptId           String
+  fromDept           Department @relation("XferFrom", fields: [fromDeptId], references: [id])
+  toDept             Department @relation("XferTo", fields: [toDeptId], references: [id])
+  transferredByUserId String
+  transferredBy      User       @relation(fields: [transferredByUserId], references: [id])
+  createdAt          DateTime   @default(now())
 
   @@index([fileRecordId])
-  @@index([fileId])
+  @@index([toDeptId])
 }
 
 model Notification {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  message   String
-  fileId    String
-  read      Boolean  @default(false)
-  createdAt DateTime @default(now())
+  id           String           @id @default(cuid())
+  userId       String
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type         NotificationType
+  title        String
+  message      String
+  fileRecordId String?
+  fileRecord   FileRecord?      @relation(fields: [fileRecordId], references: [id], onDelete: SetNull)
+  read         Boolean          @default(false)
+  createdAt    DateTime         @default(now())
 
   @@index([userId, read])
+}
+
+model AuditLog {
+  id           String   @id @default(cuid())
+  userId       String?
+  user         User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action       String
+  resourceType String
+  resourceId   String?
+  metadata     Json?
+  ipAddress    String?
+  userAgent    String?
+  createdAt    DateTime @default(now())
+
+  @@index([userId])
+  @@index([resourceType, resourceId])
+  @@index([createdAt])
 }

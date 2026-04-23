@@ -6,6 +6,7 @@ export function FileUploadPage() {
   const nav = useNavigate();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [priority, setPriority] = useState("MEDIUM");
   const [file, setFile] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -22,6 +23,7 @@ export function FileUploadPage() {
       const fd = new FormData();
       fd.append("title", title);
       fd.append("description", description);
+      fd.append("priority", priority);
       fd.append("document", file);
       const created = await api("/files", { method: "POST", body: fd });
       nav(`/files/${created.id}`);
@@ -36,8 +38,8 @@ export function FileUploadPage() {
     <div className="max-w-xl">
       <h1 className="font-display text-2xl text-ink-950 mb-2">Register a new file</h1>
       <p className="text-sm text-ink-500 mb-8">
-        Upload a document and assign a title. The system will issue a file ID using your department
-        prefix. You can route it to another department from the tracking page once it is ready.
+        Upload a document. The system assigns a numeric ID and displays it with your department prefix
+        (e.g. REG-100042).
       </p>
       <form onSubmit={onSubmit} className="space-y-6 border-t border-b border-line py-8">
         {error && <p className="text-sm text-red-700">{error}</p>}
@@ -61,6 +63,20 @@ export function FileUploadPage() {
             value={description}
             onChange={(e) => setDescription(e.target.value)}
           />
+        </div>
+        <div>
+          <label className="block text-xs font-semibold uppercase tracking-wide text-ink-500 mb-1.5">
+            Priority
+          </label>
+          <select
+            className="w-full border border-line px-3 py-2 text-sm bg-white"
+            value={priority}
+            onChange={(e) => setPriority(e.target.value)}
+          >
+            <option value="LOW">Low</option>
+            <option value="MEDIUM">Medium</option>
+            <option value="HIGH">High</option>
+          </select>
         </div>
         <div>
           <label className="block text-xs font-semibold uppercase tracking-wide text-ink-500 mb-1.5">

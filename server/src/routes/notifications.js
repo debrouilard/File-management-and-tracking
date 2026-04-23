@@ -4,11 +4,11 @@ import {
   patchNotificationRead,
   postMarkAllRead,
 } from "../controllers/notificationController.js";
-import { requireAuth } from "../middleware/auth.js";
+import { requireAuth, requirePasswordResetDone } from "../middleware/auth.js";
 
 const r = Router();
 
-r.use(requireAuth);
+r.use(requireAuth, requirePasswordResetDone);
 
 r.get("/", getNotifications);
 r.patch("/:id/read", patchNotificationRead);

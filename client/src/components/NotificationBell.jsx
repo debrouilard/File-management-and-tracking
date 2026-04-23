@@ -65,7 +65,7 @@ export function NotificationBell() {
                 >
                   <span className="block">{n.message}</span>
                   <span className="text-xs text-ink-500 mt-0.5">
-                    {n.fileId} · {new Date(n.createdAt).toLocaleString()}
+                    {new Date(n.createdAt).toLocaleString()}
                   </span>
                 </button>
               </li>

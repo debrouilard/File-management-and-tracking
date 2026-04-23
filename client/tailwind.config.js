@@ -8,6 +8,14 @@ export default {
         display: ["'Fraunces'", "Georgia", "serif"],
       },
       colors: {
+        brand: {
+          bannerFrom: "#EAF2F6",
+          bannerTo: "#DCE6EC",
+          sidebar: "#3F79A8",
+          hover: "#C8DDBF",
+          headerFrom: "#4F86B5",
+          headerTo: "#2F5F8A",
+        },
         ink: {
           950: "#0b1220",
           900: "#111827",

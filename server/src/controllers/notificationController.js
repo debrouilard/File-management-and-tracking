@@ -6,6 +6,16 @@ export async function getNotifications(req, res, next) {
       where: { userId: req.user.id },
       orderBy: { createdAt: "desc" },
       take: 100,
+      include: {
+        fileRecord: {
+          select: {
+            id: true,
+            fileNumber: true,
+            title: true,
+            senderDept: { select: { prefix: true } },
+          },
+        },
+      },
     });
     res.json(rows);
   } catch (e) {

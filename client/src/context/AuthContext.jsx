@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { api } from "../services/api.js";
+import { api, resetCsrf } from "../services/api.js";
 
 const AuthContext = createContext(null);
 
@@ -30,7 +30,13 @@ export function AuthProvider({ children }) {
     return res;
   }, []);
 
+  const applySession = useCallback((res) => {
+    setToken(res.token);
+    setUser(res.user);
+  }, []);
+
   const logout = useCallback(() => {
+    resetCsrf();
     setToken(null);
     setUser(null);
   }, []);
@@ -42,8 +48,9 @@ export function AuthProvider({ children }) {
       isAuthenticated: Boolean(token && user),
       login,
       logout,
+      applySession,
     }),
-    [user, token, login, logout]
+    [user, token, login, logout, applySession]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

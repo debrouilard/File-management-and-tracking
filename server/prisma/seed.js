@@ -7,6 +7,7 @@ async function main() {
   const departments = [
     { name: "Registry", prefix: "REG" },
     { name: "Finance", prefix: "FIN" },
+    { name: "Human Resources", prefix: "HR" },
     { name: "Administration", prefix: "ADM" },
   ];
 
@@ -24,13 +25,14 @@ async function main() {
   const hash = await bcrypt.hash("ChangeMe123!", 12);
   await prisma.user.upsert({
     where: { email: "admin@aau.edu" },
-    update: {},
+    update: { mustResetPassword: false },
     create: {
       name: "System Admin",
       email: "admin@aau.edu",
       password: hash,
       role: "ADMIN",
       departmentId: reg.id,
+      mustResetPassword: false,
     },
   });
 }
