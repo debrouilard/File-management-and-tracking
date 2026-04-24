@@ -3,7 +3,14 @@
 @tailwind utilities;
 
 @layer base {
-  html {
-    @apply scroll-smooth;
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    overflow: hidden; /* no page-level scrolling */
+    background: #f5f7fa; /* page background */
   }
 }

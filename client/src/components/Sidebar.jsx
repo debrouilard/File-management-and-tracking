@@ -13,7 +13,7 @@ export function Sidebar() {
   const { user } = useAuth();
 
   return (
-    <aside className="bg-brand-sidebar min-h-[calc(100vh-104px)]">
+    <aside className="fixed left-0 top-0 h-screen w-[240px] bg-brand-sidebar text-white">
       <nav className="py-4">
         <NavLink to="/dashboard" className={itemCls}>
           Dashboard

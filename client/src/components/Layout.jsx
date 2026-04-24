@@ -5,19 +5,14 @@ import { TopBanner } from "./TopBanner.jsx";
 
 export function Layout() {
   return (
-    <div className="min-h-screen bg-surface">
-      <TopBanner />
-      <Navbar />
-
-      <div className="max-w-7xl mx-auto px-4 py-6">
-        <div className="grid grid-cols-12 gap-4">
-          <div className="col-span-12 lg:col-span-2">
-            <Sidebar />
-          </div>
-          <main className="col-span-12 lg:col-span-10">
-            <Outlet />
-          </main>
-        </div>
+    <div className="h-screen bg-[#F5F7FA] flex">
+      <Sidebar />
+      <div className="flex-1 h-screen overflow-y-auto bg-white ml-[240px]">
+        <TopBanner />
+        <Navbar />
+        <main className="px-6 py-6">
+          <Outlet />
+        </main>
       </div>
     </div>
   );
