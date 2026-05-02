@@ -143,3 +143,35 @@ model AuditLog {
   @@index([resourceType, resourceId])
   @@index([createdAt])
 }
+
+model PasswordResetRequest {
+  id            String   @id @default(cuid())
+  email         String
+  userId        String?
+  user          User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  status        String   @default("PENDING") // PENDING | COMPLETED
+  completedById String?
+  completedBy   User?    @relation("ResetCompletedBy", fields: [completedById], references: [id], onDelete: SetNull)
+  completedAt   DateTime?
+  createdAt     DateTime @default(now())
+
+  @@index([email])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model PasswordResetRequest {
+  id               String   @id @default(cuid())
+  email            String
+  userId           String?
+  user             User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  status           String   @default("PENDING") // PENDING | COMPLETED
+  completedById    String?
+  completedBy      User?    @relation("ResetCompletedBy", fields: [completedById], references: [id], onDelete: SetNull)
+  completedAt      DateTime?
+  createdAt        DateTime @default(now())
+
+  @@index([email])
+  @@index([status])
+  @@index([createdAt])
+}

@@ -116,3 +116,60 @@ export async function bulkImportUsersFromCsv(buffer, { actorUserId }, reqCtx) {
 
   return { created: created.length, failed: errors.length, errors };
 }
+
+export async function updateUser(userId, { name, role, departmentId }, reqCtx) {
+  const updated = await prisma.user.update({
+    where: { id: userId },
+    data: {
+      name: String(name).trim(),
+      role,
+      departmentId,
+    },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      departmentId: true,
+      mustResetPassword: true,
+      department: { select: { id: true, name: true, prefix: true } },
+      createdAt: true,
+    },
+  });
+
+  await writeAudit({
+    userId: reqCtx?.user?.id,
+    action: "USER_UPDATED",
+    resourceType: "USER",
+    resourceId: updated.id,
+    metadata: { email: updated.email, role: updated.role, departmentId: updated.departmentId },
+    ipAddress: reqCtx?.ip,
+    userAgent: reqCtx?.get?.("user-agent"),
+  });
+
+  return updated;
+}
+
+export async function deleteUser(userId, reqCtx) {
+  const u = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, email: true, role: true },
+  });
+  if (!u) {
+    const err = new Error("User not found");
+    err.status = 404;
+    throw err;
+  }
+
+  await prisma.user.delete({ where: { id: userId } });
+
+  await writeAudit({
+    userId: reqCtx?.user?.id,
+    action: "USER_DELETED",
+    resourceType: "USER",
+    resourceId: userId,
+    metadata: { email: u.email, role: u.role },
+    ipAddress: reqCtx?.ip,
+    userAgent: reqCtx?.get?.("user-agent"),
+  });
+}

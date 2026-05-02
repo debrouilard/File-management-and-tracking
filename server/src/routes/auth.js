@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { body } from "express-validator";
-import { postChangePassword, postLogin } from "../controllers/authController.js";
+import { postChangePassword, postForgotPassword, postLogin } from "../controllers/authController.js";
 import { requireAuth } from "../middleware/auth.js";
 import { validateRequest } from "../middleware/validateRequest.js";
 
@@ -21,6 +21,13 @@ r.post(
   body("newPassword").isString().isLength({ min: 8, max: 128 }),
   validateRequest,
   postChangePassword
+);
+
+r.post(
+  "/forgot-password",
+  body("email").isEmail().normalizeEmail(),
+  validateRequest,
+  postForgotPassword
 );
 
 export default r;

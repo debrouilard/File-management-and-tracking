@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
+import aauLogo from "../assets/aau-logo.png";
 
 function ProfileIcon() {
   return (
@@ -36,14 +37,17 @@ export function TopBanner() {
   }, []);
 
   return (
-    <div className="bg-gradient-to-r from-brand-bannerFrom to-brand-bannerTo border-b border-line">
-      <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+    <div className="fixed top-0 left-0 right-0 z-20 bg-gradient-to-r from-brand-bannerFrom to-brand-bannerTo border-b border-line">
+      <div className="h-[64px] max-w-7xl mx-auto px-4 flex items-center justify-between">
         <Link to="/dashboard" className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-white border border-line grid place-items-center text-brand-sidebar font-semibold">
-            AAU
-          </div>
+          <img
+            src={aauLogo}
+            alt="AAU logo"
+            className="w-10 h-10 object-contain"
+          />
           <div className="leading-tight">
-            <p className="text-ink-950 font-semibold">AAU Document Management System</p>
+            <p className="text-ink-950 font-semibold">AAU</p>
+            <p className="text-ink-700 text-xs">Document management system</p>
           </div>
         </Link>
 

@@ -1,5 +1,5 @@
 import { Prisma } from "@prisma/client";
-import { bulkImportUsersFromCsv, createUser, listUsers } from "../services/userService.js";
+import { bulkImportUsersFromCsv, createUser, deleteUser, listUsers, updateUser } from "../services/userService.js";
 
 export async function getUsers(_req, res, next) {
   try {
@@ -30,6 +30,25 @@ export async function postBulkUsers(req, res, next) {
     }
     const result = await bulkImportUsersFromCsv(req.file.buffer, { actorUserId: req.user.id }, req);
     res.status(201).json(result);
+  } catch (e) {
+    next(e);
+  }
+}
+
+export async function patchUser(req, res, next) {
+  try {
+    const { name, role, departmentId } = req.body;
+    const user = await updateUser(req.params.id, { name, role, departmentId }, req);
+    res.json(user);
+  } catch (e) {
+    next(e);
+  }
+}
+
+export async function deleteUserById(req, res, next) {
+  try {
+    await deleteUser(req.params.id, req);
+    res.status(204).send();
   } catch (e) {
     next(e);
   }

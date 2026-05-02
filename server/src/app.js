@@ -9,6 +9,7 @@ import fileRoutes from "./routes/files.js";
 import notificationRoutes from "./routes/notifications.js";
 import searchRoutes from "./routes/search.js";
 import auditRoutes from "./routes/audit.js";
+import passwordResetRoutes from "./routes/passwordResets.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { issueCsrf, verifyCsrf } from "./middleware/csrf.js";
 
@@ -44,6 +45,7 @@ app.use("/files", fileRoutes);
 app.use("/notifications", notificationRoutes);
 app.use("/search", searchRoutes);
 app.use("/audit", auditRoutes);
+app.use("/password-resets", passwordResetRoutes);
 
 app.use(errorHandler);
 

@@ -5,7 +5,7 @@ import { useAuth } from "../context/AuthContext.jsx";
 
 function HeaderStrip({ title }) {
   return (
-    <div className="px-4 py-3 bg-gradient-to-r from-brand-headerFrom to-brand-headerTo text-white">
+    <div className="px-4 h-[44px] flex items-center bg-brand-sidebar text-white">
       <p className="text-sm font-semibold">{title}</p>
     </div>
   );
@@ -23,6 +23,7 @@ export function DashboardPage() {
   const { user } = useAuth();
   const [departments, setDepartments] = useState([]);
   const [doc, setDoc] = useState(null);
+  const [fileName, setFileName] = useState("");
   const [description, setDescription] = useState("");
   const [receiverDeptId, setReceiverDeptId] = useState("");
   const [file, setFile] = useState(null);
@@ -35,6 +36,8 @@ export function DashboardPage() {
   const [activeAction, setActiveAction] = useState("");
   const [note, setNote] = useState("");
   const [activeReceived, setActiveReceived] = useState(null);
+
+  const docIdPreview = `${user?.department?.prefix || "UNK"}/XXXXXX/${new Date().toISOString().slice(0, 10)}`;
 
   useEffect(() => {
     api("/departments").then(setDepartments).catch(() => {});
@@ -64,7 +67,7 @@ export function DashboardPage() {
     };
   }, [user]);
 
-  const canSubmitTransmission = Boolean(doc && receiverDeptId && description.trim().length > 0);
+  const canSubmitTransmission = Boolean(doc && receiverDeptId && fileName.trim().length > 0 && description.trim().length > 0);
 
   async function sendDocument() {
     setErr("");
@@ -72,7 +75,7 @@ export function DashboardPage() {
     setBusy(true);
     try {
       const fd = new FormData();
-      fd.append("title", doc.name);
+      fd.append("title", fileName.trim());
       fd.append("description", description);
       fd.append("priority", "MEDIUM");
       fd.append("document", doc);
@@ -82,6 +85,7 @@ export function DashboardPage() {
         body: JSON.stringify({ receiverDeptId }),
       });
       setDescription("");
+      setFileName("");
       setReceiverDeptId("");
       setDoc(null);
       setFile(created);
@@ -169,9 +173,33 @@ export function DashboardPage() {
                 type="file"
                 accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 className="mt-3 text-sm"
-                onChange={(e) => setDoc(e.target.files?.[0] || null)}
+                onChange={(e) => {
+                  const f = e.target.files?.[0] || null;
+                  setDoc(f);
+                  if (f) setFileName(f.name);
+                }}
               />
               {doc && <p className="text-xs text-ink-700 mt-2">Selected: <span className="font-medium">{doc.name}</span></p>}
+            </div>
+
+            <div className="grid grid-cols-12 gap-4">
+              <div className="col-span-12 md:col-span-7">
+                <label className="block text-xs text-ink-500 mb-1">File Name</label>
+                <input
+                  value={fileName}
+                  onChange={(e) => setFileName(e.target.value)}
+                  className="w-full border border-line px-3 py-2 text-sm bg-white"
+                  placeholder="Enter file name"
+                />
+              </div>
+              <div className="col-span-12 md:col-span-5">
+                <label className="block text-xs text-ink-500 mb-1">Document ID</label>
+                <input
+                  readOnly
+                  value={docIdPreview}
+                  className="w-full border border-line px-3 py-2 text-sm bg-surface font-mono"
+                />
+              </div>
             </div>
 
             <div>
@@ -285,7 +313,10 @@ export function DashboardPage() {
           <HeaderStrip title="Sent Activity Feed" />
           <div className="p-3 max-h-[360px] overflow-y-auto space-y-3">
             {sent.map((f) => (
-              <div key={f.id} className="text-sm border-b border-line pb-2 last:border-0">
+              <div
+                key={f.id}
+                className="text-sm border border-line bg-brand-hover/40 px-3 py-2 last:border-0"
+              >
                 <p className="font-mono text-xs text-ink-900">{f.displayId}</p>
                 <p className="text-xs text-ink-500 mt-1">{new Date(f.createdAt).toLocaleString()}</p>
               </div>
@@ -298,7 +329,10 @@ export function DashboardPage() {
           <HeaderStrip title="Received Activity Feed" />
           <div className="p-3 max-h-[360px] overflow-y-auto space-y-3">
             {incoming.map((f) => (
-              <div key={f.id} className="text-sm border-b border-line pb-2 last:border-0">
+              <div
+                key={f.id}
+                className="text-sm border border-line bg-brand-hover/40 px-3 py-2 last:border-0"
+              >
                 <p className="font-semibold text-ink-900 truncate">{f.title}</p>
                 <p className="text-xs text-ink-700 mt-1">Sender: {f.senderDept?.prefix}</p>
                 <p className="text-xs text-ink-500 mt-1">{new Date(f.createdAt).toLocaleString()}</p>

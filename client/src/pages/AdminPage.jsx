@@ -1,11 +1,40 @@
 import { useEffect, useState } from "react";
 import { api } from "../services/api.js";
 
+function ThreeDotIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="w-5 h-5" fill="currentColor" aria-hidden="true">
+      <circle cx="12" cy="5" r="1.6" />
+      <circle cx="12" cy="12" r="1.6" />
+      <circle cx="12" cy="19" r="1.6" />
+    </svg>
+  );
+}
+
+function SectionCard({ title, children }) {
+  return (
+    <section className="mb-12 bg-white border border-line rounded-md shadow-sm overflow-hidden">
+      <div className="px-4 h-[44px] flex items-center bg-brand-sidebar text-white">
+        <h2 className="text-sm font-semibold">{title}</h2>
+      </div>
+      <div className="p-4">{children}</div>
+    </section>
+  );
+}
+
+const ADMIN_PRIMARY_BTN =
+  "px-4 py-2 text-sm font-semibold bg-brand-hover text-white rounded-md hover:brightness-95 transition-colors disabled:opacity-50";
+
 export function AdminPage() {
   const [users, setUsers] = useState([]);
   const [departments, setDepartments] = useState([]);
+  const [resetRequests, setResetRequests] = useState([]);
   const [error, setError] = useState("");
   const [msg, setMsg] = useState("");
+  const [userQ, setUserQ] = useState("");
+  const [deptQ, setDeptQ] = useState("");
+  const [openUserMenuId, setOpenUserMenuId] = useState(null);
+  const [openDeptMenuId, setOpenDeptMenuId] = useState(null);
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -17,9 +46,14 @@ export function AdminPage() {
   const [csvFile, setCsvFile] = useState(null);
 
   async function load() {
-    const [u, d] = await Promise.all([api("/users"), api("/departments")]);
+    const [u, d, rr] = await Promise.all([
+      api("/users"),
+      api("/departments"),
+      api("/password-resets?status=PENDING"),
+    ]);
     setUsers(u);
     setDepartments(d);
+    setResetRequests(rr);
     if (!form.departmentId && d[0]) setForm((f) => ({ ...f, departmentId: d[0].id }));
   }
 
@@ -88,10 +122,30 @@ export function AdminPage() {
       {error && <p className="text-sm text-red-700 mb-2">{error}</p>}
       {msg && <p className="text-sm text-green-800 mb-4">{msg}</p>}
 
-      <section className="mb-12">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-500 border-b border-line pb-2 mb-4">
-          New department
-        </h2>
+      <SectionCard title="Search (Admin)">
+        <div className="grid sm:grid-cols-2 gap-4 max-w-3xl">
+          <div>
+            <label className="text-xs text-ink-500">Search user</label>
+            <input
+              className="mt-1 w-full border border-line px-3 py-2 text-sm"
+              value={userQ}
+              onChange={(e) => setUserQ(e.target.value)}
+              placeholder="Name, email, role, or department prefix"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-ink-500">Search department</label>
+            <input
+              className="mt-1 w-full border border-line px-3 py-2 text-sm"
+              value={deptQ}
+              onChange={(e) => setDeptQ(e.target.value)}
+              placeholder="Prefix or department name"
+            />
+          </div>
+        </div>
+      </SectionCard>
+
+      <SectionCard title="New Department">
         <form onSubmit={onCreateDepartment} className="grid sm:grid-cols-3 gap-4 max-w-3xl items-end">
           <div>
             <label className="text-xs text-ink-500">Name</label>
@@ -111,16 +165,13 @@ export function AdminPage() {
               required
             />
           </div>
-          <button type="submit" className="px-4 py-2 text-sm font-medium bg-accent text-white h-[38px]">
+          <button type="submit" className={`${ADMIN_PRIMARY_BTN} h-[38px]`}>
             Create department
           </button>
         </form>
-      </section>
+      </SectionCard>
 
-      <section className="mb-12">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-500 border-b border-line pb-2 mb-4">
-          New user
-        </h2>
+      <SectionCard title="New User">
         <form onSubmit={onCreateUser} className="grid sm:grid-cols-2 gap-4 max-w-3xl">
           <div>
             <label className="text-xs text-ink-500">Name</label>
@@ -178,17 +229,14 @@ export function AdminPage() {
             </select>
           </div>
           <div className="sm:col-span-2">
-            <button type="submit" className="px-4 py-2 text-sm font-medium bg-accent text-white">
+            <button type="submit" className={ADMIN_PRIMARY_BTN}>
               Create user
             </button>
           </div>
         </form>
-      </section>
+      </SectionCard>
 
-      <section className="mb-12">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-500 border-b border-line pb-2 mb-4">
-          Bulk import (CSV)
-        </h2>
+      <SectionCard title="Bulk Import CSV">
         <p className="text-xs text-ink-500 mb-3 max-w-2xl">
           Header row required:{" "}
           <span className="font-mono">name,email,password,role,departmentPrefix</span>. Role must be ADMIN,
@@ -196,65 +244,298 @@ export function AdminPage() {
         </p>
         <form onSubmit={onBulk} className="flex flex-wrap items-end gap-4">
           <input type="file" accept=".csv,text/csv" onChange={(e) => setCsvFile(e.target.files?.[0] || null)} />
-          <button type="submit" className="px-4 py-2 text-sm border border-line hover:bg-white">
+          <button type="submit" className={ADMIN_PRIMARY_BTN}>
             Upload CSV
           </button>
         </form>
-      </section>
+      </SectionCard>
 
-      <section className="mb-12">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-500 border-b border-line pb-2 mb-4">
-          Departments
-        </h2>
-        <div className="overflow-x-auto border border-line">
+      <SectionCard title="Password Reset Requests">
+        <div className="overflow-x-auto border border-line rounded-md">
           <table className="w-full text-sm">
-            <thead className="bg-white border-b border-line text-xs uppercase text-ink-500">
+            <thead className="bg-brand-sidebar text-white text-xs uppercase">
               <tr>
-                <th className="px-3 py-2 text-left font-medium">Prefix</th>
-                <th className="px-3 py-2 text-left font-medium">Name</th>
+                <th className="px-3 py-2 text-left font-semibold">Requested Email</th>
+                <th className="px-3 py-2 text-left font-semibold">User</th>
+                <th className="px-3 py-2 text-left font-semibold">Requested At</th>
+                <th className="px-3 py-2 text-right font-semibold w-[220px]">
+                  <span className="sr-only">Actions</span>
+                </th>
               </tr>
             </thead>
             <tbody>
-              {departments.map((d) => (
+              {resetRequests.map((r) => (
+                <tr key={r.id} className="border-b border-line last:border-0">
+                  <td className="px-3 py-2">{r.email}</td>
+                  <td className="px-3 py-2">{r.user?.name || "—"}</td>
+                  <td className="px-3 py-2">{new Date(r.createdAt).toLocaleString()}</td>
+                  <td className="px-3 py-2 text-right">
+                    <button
+                      type="button"
+                      className={ADMIN_PRIMARY_BTN}
+                      onClick={async () => {
+                        const tempPassword = window.prompt("Set a temporary password (min 8 characters)");
+                        if (!tempPassword) return;
+                        setError("");
+                        setMsg("");
+                        try {
+                          await api(`/password-resets/${r.id}/complete`, {
+                            method: "POST",
+                            body: JSON.stringify({ tempPassword }),
+                          });
+                          setMsg("Temporary password set. User will be forced to change it on next login.");
+                          await load();
+                        } catch (e) {
+                          setError(e.message);
+                        }
+                      }}
+                    >
+                      Set temporary password
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {resetRequests.length === 0 && (
+                <tr>
+                  <td className="px-3 py-6 text-ink-500" colSpan={4}>
+                    No pending reset requests.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </SectionCard>
+
+      <SectionCard title="Departments">
+        <div className="overflow-x-auto border border-line rounded-md">
+          <table className="w-full text-sm">
+            <thead className="bg-brand-sidebar text-white text-xs uppercase">
+              <tr>
+                <th className="px-3 py-2 text-left font-semibold">Prefix</th>
+                <th className="px-3 py-2 text-left font-semibold">Name</th>
+                <th className="px-3 py-2 text-right font-semibold w-[56px]">
+                  <span className="sr-only">Actions</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {departments
+                .filter((d) => {
+                  const q = deptQ.trim().toLowerCase();
+                  if (!q) return true;
+                  return (
+                    String(d.prefix || "").toLowerCase().includes(q) ||
+                    String(d.name || "").toLowerCase().includes(q)
+                  );
+                })
+                .map((d) => (
                 <tr key={d.id} className="border-b border-line last:border-0">
                   <td className="px-3 py-2 font-mono">{d.prefix}</td>
                   <td className="px-3 py-2">{d.name}</td>
+                  <td className="px-3 py-2 text-right">
+                    <div className="relative inline-block">
+                      <button
+                        type="button"
+                        aria-label="Department actions"
+                        className="p-1.5 hover:bg-surface border border-transparent hover:border-line rounded"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenUserMenuId(null);
+                          setOpenDeptMenuId((v) => (v === d.id ? null : d.id));
+                        }}
+                      >
+                        <ThreeDotIcon />
+                      </button>
+                      {openDeptMenuId === d.id && (
+                        <div
+                          className="absolute right-0 mt-1 w-40 bg-white border border-line shadow-lg z-10"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <button
+                            type="button"
+                            className="w-full text-left px-3 py-2 text-sm hover:bg-brand-hover"
+                            onClick={async () => {
+                              setOpenDeptMenuId(null);
+                              const nextName = window.prompt("Update department name", d.name);
+                              if (nextName == null) return;
+                              const nextPrefix = window.prompt("Update department prefix", d.prefix);
+                              if (nextPrefix == null) return;
+                              setError("");
+                              setMsg("");
+                              try {
+                                await api(`/departments/${d.id}`, {
+                                  method: "PATCH",
+                                  body: JSON.stringify({ name: nextName, prefix: nextPrefix }),
+                                });
+                                setMsg("Department updated.");
+                                await load();
+                              } catch (e) {
+                                setError(e.message);
+                              }
+                            }}
+                          >
+                            Update
+                          </button>
+                          <button
+                            type="button"
+                            className="w-full text-left px-3 py-2 text-sm text-red-700 hover:bg-red-50"
+                            onClick={async () => {
+                              setOpenDeptMenuId(null);
+                              const ok = window.confirm(`Delete department ${d.prefix} — ${d.name}?`);
+                              if (!ok) return;
+                              setError("");
+                              setMsg("");
+                              try {
+                                await api(`/departments/${d.id}`, { method: "DELETE" });
+                                setMsg("Department deleted.");
+                                await load();
+                              } catch (e) {
+                                setError(e.message);
+                              }
+                            }}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-      </section>
+      </SectionCard>
 
-      <section>
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-500 border-b border-line pb-2 mb-4">
-          Users
-        </h2>
-        <div className="overflow-x-auto border border-line">
+      <SectionCard title="Users">
+        <div className="overflow-x-auto border border-line rounded-md">
           <table className="w-full text-sm">
-            <thead className="bg-white border-b border-line text-xs uppercase text-ink-500">
+            <thead className="bg-brand-sidebar text-white text-xs uppercase">
               <tr>
-                <th className="px-3 py-2 text-left font-medium">Name</th>
-                <th className="px-3 py-2 text-left font-medium">Email</th>
-                <th className="px-3 py-2 text-left font-medium">Role</th>
-                <th className="px-3 py-2 text-left font-medium">Dept</th>
-                <th className="px-3 py-2 text-left font-medium">Reset?</th>
+                <th className="px-3 py-2 text-left font-semibold">User ID</th>
+                <th className="px-3 py-2 text-left font-semibold">Name</th>
+                <th className="px-3 py-2 text-left font-semibold">Email</th>
+                <th className="px-3 py-2 text-left font-semibold">Role</th>
+                <th className="px-3 py-2 text-left font-semibold">Department</th>
+                <th className="px-3 py-2 text-left font-semibold">Reset</th>
+                <th className="px-3 py-2 text-right font-semibold w-[56px]">
+                  <span className="sr-only">Actions</span>
+                </th>
               </tr>
             </thead>
             <tbody>
-              {users.map((u) => (
+              {users
+                .filter((u) => {
+                  const q = userQ.trim().toLowerCase();
+                  if (!q) return true;
+                  return (
+                    String(u.name || "").toLowerCase().includes(q) ||
+                    String(u.email || "").toLowerCase().includes(q) ||
+                    String(u.role || "").toLowerCase().includes(q) ||
+                    String(u.department?.prefix || "").toLowerCase().includes(q)
+                  );
+                })
+                .map((u) => (
                 <tr key={u.id} className="border-b border-line last:border-0">
+                  <td className="px-3 py-2 font-mono text-xs" title={u.id}>
+                    {String(u.id).slice(0, 8)}
+                  </td>
                   <td className="px-3 py-2">{u.name}</td>
                   <td className="px-3 py-2">{u.email}</td>
                   <td className="px-3 py-2">{u.role}</td>
                   <td className="px-3 py-2">{u.department?.prefix}</td>
                   <td className="px-3 py-2">{u.mustResetPassword ? "Yes" : "—"}</td>
+                  <td className="px-3 py-2 text-right">
+                    <div className="relative inline-block">
+                      <button
+                        type="button"
+                        aria-label="User actions"
+                        className="p-1.5 hover:bg-surface border border-transparent hover:border-line rounded"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenDeptMenuId(null);
+                          setOpenUserMenuId((v) => (v === u.id ? null : u.id));
+                        }}
+                      >
+                        <ThreeDotIcon />
+                      </button>
+                      {openUserMenuId === u.id && (
+                        <div
+                          className="absolute right-0 mt-1 w-40 bg-white border border-line shadow-lg z-10"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <button
+                            type="button"
+                            className="w-full text-left px-3 py-2 text-sm hover:bg-brand-hover"
+                            onClick={async () => {
+                              setOpenUserMenuId(null);
+                              const nextName = window.prompt("Update user name", u.name);
+                              if (nextName == null) return;
+                              const nextRole = window.prompt("Update role (ADMIN, DEPARTMENT_HEAD, STAFF)", u.role);
+                              if (nextRole == null) return;
+                              const nextDeptPrefix = window.prompt(
+                                "Update department prefix",
+                                u.department?.prefix || ""
+                              );
+                              if (nextDeptPrefix == null) return;
+                              const dept = departments.find(
+                                (d) => String(d.prefix).toUpperCase() === String(nextDeptPrefix).toUpperCase().trim()
+                              );
+                              if (!dept) {
+                                setError("Department prefix not found.");
+                                return;
+                              }
+                              setError("");
+                              setMsg("");
+                              try {
+                                await api(`/users/${u.id}`, {
+                                  method: "PATCH",
+                                  body: JSON.stringify({
+                                    name: nextName,
+                                    role: String(nextRole).toUpperCase().trim(),
+                                    departmentId: dept.id,
+                                  }),
+                                });
+                                setMsg("User updated.");
+                                await load();
+                              } catch (e) {
+                                setError(e.message);
+                              }
+                            }}
+                          >
+                            Update
+                          </button>
+                          <button
+                            type="button"
+                            className="w-full text-left px-3 py-2 text-sm text-red-700 hover:bg-red-50"
+                            onClick={async () => {
+                              setOpenUserMenuId(null);
+                              const ok = window.confirm(`Delete user ${u.email}?`);
+                              if (!ok) return;
+                              setError("");
+                              setMsg("");
+                              try {
+                                await api(`/users/${u.id}`, { method: "DELETE" });
+                                setMsg("User deleted.");
+                                await load();
+                              } catch (e) {
+                                setError(e.message);
+                              }
+                            }}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-      </section>
+      </SectionCard>
     </div>
   );
 }

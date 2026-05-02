@@ -3,9 +3,9 @@ import { api } from "../services/api.js";
 
 function Card({ title, children }) {
   return (
-    <div className="bg-white border border-line">
-      <div className="px-4 py-3 border-b border-line">
-        <p className="text-sm font-semibold text-ink-950">{title}</p>
+    <div className="bg-white border border-line rounded-md shadow-sm overflow-hidden">
+      <div className="px-4 h-[44px] flex items-center bg-brand-sidebar text-white">
+        <p className="text-sm font-semibold">{title}</p>
       </div>
       <div className="p-4">{children}</div>
     </div>
@@ -32,8 +32,8 @@ function SimpleLineChart({ sent, received }) {
     <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-[180px]">
       <line x1={pad} y1={h - pad} x2={w - pad} y2={h - pad} stroke="#e5e7eb" />
       <line x1={pad} y1={pad} x2={pad} y2={h - pad} stroke="#e5e7eb" />
-      <polyline fill="none" stroke="#16a34a" strokeWidth="3" points={line(sent)} />
-      <polyline fill="none" stroke="#dc2626" strokeWidth="3" points={line(received)} />
+      <polyline fill="none" stroke="#3F79A8" strokeWidth="3" points={line(sent)} />
+      <polyline fill="none" stroke="#1e3a5f" strokeWidth="3" points={line(received)} />
       {["Week 1", "Week 2", "Week 3", "Week 4"].map((label, i) => (
         <text
           key={label}
@@ -147,7 +147,7 @@ export function ReportsPage() {
         <div className="grid grid-cols-12 gap-4 mb-4">
           <div className="col-span-12 xl:col-span-7">
             <Card title="Monthly Document Flow">
-              <div className="text-xs text-ink-500 mb-2">Sent (Green) vs Received (Red)</div>
+              <div className="text-xs text-ink-500 mb-2">Sent vs Received</div>
               <SimpleLineChart sent={stats.sentWeekly} received={stats.receivedWeekly} />
             </Card>
           </div>
@@ -162,17 +162,17 @@ export function ReportsPage() {
           <div className="col-span-12 xl:col-span-6">
             <Card title="Sent Summary">
               <div className="grid grid-cols-3 gap-3">
-                <div className="border border-line p-3">
+                <div className="border border-line rounded-md p-3">
                   <p className="text-xs text-ink-500">Total Sent</p>
-                  <p className="text-xl font-semibold text-[#2563eb]">{stats.sent}</p>
+                  <p className="text-xl font-semibold text-accent">{stats.sent}</p>
                 </div>
-                <div className="border border-line p-3">
+                <div className="border border-line rounded-md p-3">
                   <p className="text-xs text-ink-500">Accepted</p>
-                  <p className="text-xl font-semibold text-[#16a34a]">{stats.accepted}</p>
+                  <p className="text-xl font-semibold text-brand-sidebar">{stats.accepted}</p>
                 </div>
-                <div className="border border-line p-3">
+                <div className="border border-line rounded-md p-3">
                   <p className="text-xs text-ink-500">Rejected</p>
-                  <p className="text-xl font-semibold text-[#dc2626]">{stats.rejected}</p>
+                  <p className="text-xl font-semibold text-brand-headerTo">{stats.rejected}</p>
                 </div>
               </div>
             </Card>
@@ -180,53 +180,22 @@ export function ReportsPage() {
           <div className="col-span-12 xl:col-span-6">
             <Card title="Received Summary">
               <div className="grid grid-cols-3 gap-3">
-                <div className="border border-line p-3">
+                <div className="border border-line rounded-md p-3">
                   <p className="text-xs text-ink-500">Total Received</p>
-                  <p className="text-xl font-semibold text-[#2563eb]">{stats.received}</p>
+                  <p className="text-xl font-semibold text-accent">{stats.received}</p>
                 </div>
-                <div className="border border-line p-3">
+                <div className="border border-line rounded-md p-3">
                   <p className="text-xs text-ink-500">Accepted</p>
-                  <p className="text-xl font-semibold text-[#16a34a]">{stats.accepted}</p>
+                  <p className="text-xl font-semibold text-brand-sidebar">{stats.accepted}</p>
                 </div>
-                <div className="border border-line p-3">
+                <div className="border border-line rounded-md p-3">
                   <p className="text-xs text-ink-500">Rejected</p>
-                  <p className="text-xl font-semibold text-[#dc2626]">{stats.rejected}</p>
+                  <p className="text-xl font-semibold text-brand-headerTo">{stats.rejected}</p>
                 </div>
               </div>
             </Card>
           </div>
         </div>
-
-        <Card title="Department Table">
-          <div className="overflow-x-auto border border-line">
-            <table className="w-full text-sm">
-              <thead className="bg-white border-b border-line text-xs uppercase text-ink-500">
-                <tr>
-                  <th className="px-3 py-2 text-left font-medium">Department Name</th>
-                  <th className="px-3 py-2 text-left font-medium">Documents Sent</th>
-                  <th className="px-3 py-2 text-left font-medium">Documents Processed</th>
-                </tr>
-              </thead>
-              <tbody>
-                {departments.map((d) => {
-                  const sent = files.filter((f) => f.senderDept?.id === d.id).length;
-                  const processed = files.filter(
-                    (f) =>
-                      f.receiverDept?.id === d.id &&
-                      ["RECEIVED", "UNDER_REVIEW", "APPROVED", "REJECTED"].includes(f.status)
-                  ).length;
-                  return (
-                    <tr key={d.id} className="border-b border-line last:border-0">
-                      <td className="px-3 py-2">{d.name}</td>
-                      <td className="px-3 py-2">{sent}</td>
-                      <td className="px-3 py-2">{processed}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </Card>
       </div>
     </div>
   );

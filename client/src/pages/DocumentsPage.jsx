@@ -144,12 +144,12 @@ export function DocumentsPage() {
         {error && <p className="text-sm text-red-700 mb-3">{error}</p>}
 
         <div className="border border-line">
-          <div className="grid grid-cols-12 bg-white border-b border-line text-xs uppercase tracking-wide text-ink-500">
-            <div className="col-span-3 px-3 py-2 font-medium">Document ID</div>
-            <div className="col-span-4 px-3 py-2 font-medium">File Name</div>
-            <div className="col-span-2 px-3 py-2 font-medium">Timestamp</div>
-            <div className="col-span-2 px-3 py-2 font-medium">Department</div>
-            <div className="col-span-1 px-3 py-2 font-medium">Status</div>
+          <div className="grid grid-cols-12 bg-brand-sidebar text-white border-b border-line text-xs uppercase tracking-wide">
+            <div className="col-span-3 px-3 py-2 font-semibold">Document ID</div>
+            <div className="col-span-4 px-3 py-2 font-semibold">File Name</div>
+            <div className="col-span-2 px-3 py-2 font-semibold">Timestamp</div>
+            <div className="col-span-2 px-3 py-2 font-semibold">Sender</div>
+            <div className="col-span-1 px-3 py-2 font-semibold">Status</div>
           </div>
           {filtered.map((f) => {
             const open = openId === f.id;
