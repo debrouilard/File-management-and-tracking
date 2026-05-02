@@ -43,7 +43,7 @@ export function TopBanner() {
           <img
             src={aauLogo}
             alt="AAU logo"
-            className="w-10 h-10 object-contain"
+            className="w-10 h-10 object-contain mix-blend-multiply opacity-[0.92] contrast-[1.02]"
           />
           <div className="leading-tight">
             <p className="text-ink-950 font-semibold">AAU</p>

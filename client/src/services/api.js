@@ -1,22 +1,22 @@
+/**
+ * API client — JWT via Authorization header only (no CSRF).
+ *
+ * Next.js (or any cross-origin app): set NEXT_PUBLIC_API_URL to your API origin
+ * (e.g. http://localhost:4000) and configure the API CORS allowlist (CLIENT_ORIGINS).
+ * Always use credentials: "include" if you later add cookie-based features.
+ *
+ * Example (client component):
+ *   await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, {
+ *     method: "POST",
+ *     credentials: "include",
+ *     headers: { "Content-Type": "application/json" },
+ *     body: JSON.stringify({ email, password }),
+ *   });
+ */
 const API_BASE = import.meta.env.VITE_API_URL || "/api";
-
-let csrfToken = null;
 
 function getToken() {
   return localStorage.getItem("token");
-}
-
-export function resetCsrf() {
-  csrfToken = null;
-}
-
-async function ensureCsrf() {
-  if (csrfToken) return csrfToken;
-  const res = await fetch(`${API_BASE}/auth/csrf`, { credentials: "include" });
-  if (!res.ok) throw new Error("Could not load CSRF token");
-  const data = await res.json();
-  csrfToken = data.csrfToken;
-  return csrfToken;
 }
 
 export async function downloadBlob(path, filename) {
@@ -43,10 +43,6 @@ export async function api(path, options = {}) {
   const headers = { ...(options.headers || {}) };
   const token = getToken();
   if (token) headers.Authorization = `Bearer ${token}`;
-  if (["POST", "PUT", "PATCH", "DELETE"].includes(method)) {
-    const csrf = await ensureCsrf();
-    headers["X-CSRF-Token"] = csrf;
-  }
   if (options.body && !(options.body instanceof FormData) && !headers["Content-Type"]) {
     headers["Content-Type"] = "application/json";
   }
@@ -55,7 +51,11 @@ export async function api(path, options = {}) {
   const text = await res.text();
   const data = text ? JSON.parse(text) : null;
   if (!res.ok) {
-    const msg = data?.error || data?.message || res.statusText;
+    let msg = data?.error || data?.message;
+    if (!msg && Array.isArray(data?.errors) && data.errors.length) {
+      msg = data.errors.map((e) => e.msg || e.message || String(e)).join(" ");
+    }
+    if (!msg) msg = res.statusText;
     const err = new Error(msg);
     err.status = res.status;
     err.data = data;

@@ -28,7 +28,13 @@ const ADMIN_PRIMARY_BTN =
 export function AdminPage() {
   const [users, setUsers] = useState([]);
   const [departments, setDepartments] = useState([]);
-  const [resetRequests, setResetRequests] = useState([]);
+  const [resetRequestsPending, setResetRequestsPending] = useState([]);
+  const [resetRequestsHistory, setResetRequestsHistory] = useState([]);
+  const [resetTab, setResetTab] = useState("pending");
+  const [completeResetModal, setCompleteResetModal] = useState(null);
+  const [tempPassword, setTempPassword] = useState("");
+  const [tempPasswordConfirm, setTempPasswordConfirm] = useState("");
+  const [completeResetBusy, setCompleteResetBusy] = useState(false);
   const [error, setError] = useState("");
   const [msg, setMsg] = useState("");
   const [userQ, setUserQ] = useState("");
@@ -46,14 +52,16 @@ export function AdminPage() {
   const [csvFile, setCsvFile] = useState(null);
 
   async function load() {
-    const [u, d, rr] = await Promise.all([
+    const [u, d, pending, history] = await Promise.all([
       api("/users"),
       api("/departments"),
       api("/password-resets?status=PENDING"),
+      api("/password-resets?status=COMPLETED&limit=100"),
     ]);
     setUsers(u);
     setDepartments(d);
-    setResetRequests(rr);
+    setResetRequestsPending(pending);
+    setResetRequestsHistory(history);
     if (!form.departmentId && d[0]) setForm((f) => ({ ...f, departmentId: d[0].id }));
   }
 
@@ -251,61 +259,245 @@ export function AdminPage() {
       </SectionCard>
 
       <SectionCard title="Password Reset Requests">
-        <div className="overflow-x-auto border border-line rounded-md">
-          <table className="w-full text-sm">
-            <thead className="bg-brand-sidebar text-white text-xs uppercase">
-              <tr>
-                <th className="px-3 py-2 text-left font-semibold">Requested Email</th>
-                <th className="px-3 py-2 text-left font-semibold">User</th>
-                <th className="px-3 py-2 text-left font-semibold">Requested At</th>
-                <th className="px-3 py-2 text-right font-semibold w-[220px]">
-                  <span className="sr-only">Actions</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {resetRequests.map((r) => (
-                <tr key={r.id} className="border-b border-line last:border-0">
-                  <td className="px-3 py-2">{r.email}</td>
-                  <td className="px-3 py-2">{r.user?.name || "—"}</td>
-                  <td className="px-3 py-2">{new Date(r.createdAt).toLocaleString()}</td>
-                  <td className="px-3 py-2 text-right">
-                    <button
-                      type="button"
-                      className={ADMIN_PRIMARY_BTN}
-                      onClick={async () => {
-                        const tempPassword = window.prompt("Set a temporary password (min 8 characters)");
-                        if (!tempPassword) return;
-                        setError("");
-                        setMsg("");
-                        try {
-                          await api(`/password-resets/${r.id}/complete`, {
-                            method: "POST",
-                            body: JSON.stringify({ tempPassword }),
-                          });
-                          setMsg("Temporary password set. User will be forced to change it on next login.");
-                          await load();
-                        } catch (e) {
-                          setError(e.message);
-                        }
-                      }}
-                    >
-                      Set temporary password
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {resetRequests.length === 0 && (
-                <tr>
-                  <td className="px-3 py-6 text-ink-500" colSpan={4}>
-                    No pending reset requests.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+        <p className="text-xs text-ink-500 mb-4 max-w-3xl">
+          Pending requests appear when a user submits a reset from the login page. Set a temporary password to complete
+          the request; the user must sign in and choose a new password before using the system.
+        </p>
+        <div className="flex gap-2 mb-4">
+          <button
+            type="button"
+            className={`px-3 py-1.5 text-xs font-semibold rounded-md border transition-colors ${
+              resetTab === "pending"
+                ? "bg-brand-sidebar text-white border-brand-sidebar"
+                : "bg-white text-ink-700 border-line hover:bg-surface"
+            }`}
+            onClick={() => setResetTab("pending")}
+          >
+            Pending ({resetRequestsPending.length})
+          </button>
+          <button
+            type="button"
+            className={`px-3 py-1.5 text-xs font-semibold rounded-md border transition-colors ${
+              resetTab === "history"
+                ? "bg-brand-sidebar text-white border-brand-sidebar"
+                : "bg-white text-ink-700 border-line hover:bg-surface"
+            }`}
+            onClick={() => setResetTab("history")}
+          >
+            Completed (recent)
+          </button>
         </div>
+
+        {resetTab === "pending" && (
+          <div className="overflow-x-auto border border-line rounded-md">
+            <table className="w-full text-sm min-w-[640px]">
+              <thead className="bg-brand-sidebar text-white text-xs uppercase">
+                <tr>
+                  <th className="px-3 py-2 text-left font-semibold">Status</th>
+                  <th className="px-3 py-2 text-left font-semibold">Submitted as</th>
+                  <th className="px-3 py-2 text-left font-semibold">Account</th>
+                  <th className="px-3 py-2 text-left font-semibold">Department</th>
+                  <th className="px-3 py-2 text-left font-semibold">Requested</th>
+                  <th className="px-3 py-2 text-right font-semibold w-[200px]">
+                    <span className="sr-only">Actions</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {resetRequestsPending.map((r) => (
+                  <tr key={r.id} className="border-b border-line last:border-0">
+                    <td className="px-3 py-2">
+                      <span className="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium bg-amber-50 text-amber-900 border border-amber-200">
+                        Pending
+                      </span>
+                    </td>
+                    <td className="px-3 py-2 font-mono text-xs">{r.email}</td>
+                    <td className="px-3 py-2">
+                      {r.user ? (
+                        <span>
+                          {r.user.name}
+                          <span className="block text-xs text-ink-500">{r.user.email}</span>
+                        </span>
+                      ) : (
+                        <span className="text-ink-500">No matching user</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2">{r.user?.department?.prefix || "—"}</td>
+                    <td className="px-3 py-2 whitespace-nowrap">{new Date(r.createdAt).toLocaleString()}</td>
+                    <td className="px-3 py-2 text-right">
+                      <button
+                        type="button"
+                        className={ADMIN_PRIMARY_BTN}
+                        disabled={!r.userId}
+                        title={!r.userId ? "Cannot complete until a user account matches this request." : ""}
+                        onClick={() => {
+                          setTempPassword("");
+                          setTempPasswordConfirm("");
+                          setCompleteResetModal({
+                            id: r.id,
+                            submittedAs: r.email,
+                            userLabel: r.user ? `${r.user.name} (${r.user.email})` : null,
+                          });
+                        }}
+                      >
+                        Set password and complete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {resetRequestsPending.length === 0 && (
+                  <tr>
+                    <td className="px-3 py-6 text-ink-500" colSpan={6}>
+                      No pending reset requests.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {resetTab === "history" && (
+          <div className="overflow-x-auto border border-line rounded-md">
+            <table className="w-full text-sm min-w-[720px]">
+              <thead className="bg-brand-sidebar text-white text-xs uppercase">
+                <tr>
+                  <th className="px-3 py-2 text-left font-semibold">Status</th>
+                  <th className="px-3 py-2 text-left font-semibold">Submitted as</th>
+                  <th className="px-3 py-2 text-left font-semibold">User</th>
+                  <th className="px-3 py-2 text-left font-semibold">Requested</th>
+                  <th className="px-3 py-2 text-left font-semibold">Completed</th>
+                  <th className="px-3 py-2 text-left font-semibold">By</th>
+                </tr>
+              </thead>
+              <tbody>
+                {resetRequestsHistory.map((r) => (
+                  <tr key={r.id} className="border-b border-line last:border-0">
+                    <td className="px-3 py-2">
+                      <span className="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium bg-green-50 text-green-900 border border-green-200">
+                        Completed
+                      </span>
+                    </td>
+                    <td className="px-3 py-2 font-mono text-xs">{r.email}</td>
+                    <td className="px-3 py-2">{r.user?.name || "—"}</td>
+                    <td className="px-3 py-2 whitespace-nowrap">{new Date(r.createdAt).toLocaleString()}</td>
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      {r.completedAt ? new Date(r.completedAt).toLocaleString() : "—"}
+                    </td>
+                    <td className="px-3 py-2 text-xs">{r.completedBy?.name || "—"}</td>
+                  </tr>
+                ))}
+                {resetRequestsHistory.length === 0 && (
+                  <tr>
+                    <td className="px-3 py-6 text-ink-500" colSpan={6}>
+                      No completed requests in recent history.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
       </SectionCard>
+
+      {completeResetModal && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-ink-950/40"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="complete-reset-title"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget && !completeResetBusy) setCompleteResetModal(null);
+          }}
+        >
+          <div className="w-full max-w-md bg-white rounded-lg border border-line shadow-xl" onMouseDown={(e) => e.stopPropagation()}>
+            <div className="px-4 h-[44px] flex items-center bg-brand-sidebar text-white rounded-t-lg">
+              <h2 id="complete-reset-title" className="text-sm font-semibold">
+                Complete password reset
+              </h2>
+            </div>
+            <form
+              className="p-4 space-y-4"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                setError("");
+                setMsg("");
+                if (tempPassword.length < 8) {
+                  setError("Temporary password must be at least 8 characters.");
+                  return;
+                }
+                if (tempPassword !== tempPasswordConfirm) {
+                  setError("Passwords do not match.");
+                  return;
+                }
+                setCompleteResetBusy(true);
+                try {
+                  await api(`/password-resets/${completeResetModal.id}/complete`, {
+                    method: "POST",
+                    body: JSON.stringify({ tempPassword }),
+                  });
+                  setMsg("Temporary password set. The user must set a new password after login.");
+                  setCompleteResetModal(null);
+                  await load();
+                } catch (err) {
+                  setError(err.message);
+                } finally {
+                  setCompleteResetBusy(false);
+                }
+              }}
+            >
+              <p className="text-xs text-ink-500">
+                Request: <span className="font-mono text-ink-900">{completeResetModal.submittedAs}</span>
+                {completeResetModal.userLabel && (
+                  <>
+                    <br />
+                    User: {completeResetModal.userLabel}
+                  </>
+                )}
+              </p>
+              <div>
+                <label className="text-xs text-ink-500">Temporary password (min 8 characters)</label>
+                <input
+                  type="password"
+                  autoComplete="new-password"
+                  className="mt-1 w-full border border-line px-3 py-2 text-sm rounded-md"
+                  value={tempPassword}
+                  onChange={(e) => setTempPassword(e.target.value)}
+                  required
+                  minLength={8}
+                  disabled={completeResetBusy}
+                />
+              </div>
+              <div>
+                <label className="text-xs text-ink-500">Confirm temporary password</label>
+                <input
+                  type="password"
+                  autoComplete="new-password"
+                  className="mt-1 w-full border border-line px-3 py-2 text-sm rounded-md"
+                  value={tempPasswordConfirm}
+                  onChange={(e) => setTempPasswordConfirm(e.target.value)}
+                  required
+                  minLength={8}
+                  disabled={completeResetBusy}
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  className="px-4 py-2 text-sm border border-line rounded-md hover:bg-surface"
+                  disabled={completeResetBusy}
+                  onClick={() => setCompleteResetModal(null)}
+                >
+                  Cancel
+                </button>
+                <button type="submit" className={ADMIN_PRIMARY_BTN} disabled={completeResetBusy}>
+                  {completeResetBusy ? "Saving…" : "Complete & notify user"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       <SectionCard title="Departments">
         <div className="overflow-x-auto border border-line rounded-md">

@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { api, resetCsrf } from "../services/api.js";
+import { api } from "../services/api.js";
 
 const AuthContext = createContext(null);
 
@@ -36,7 +36,6 @@ export function AuthProvider({ children }) {
   }, []);
 
   const logout = useCallback(() => {
-    resetCsrf();
     setToken(null);
     setUser(null);
   }, []);

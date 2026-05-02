@@ -70,7 +70,7 @@ export function ChangePasswordPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2.5 text-sm font-semibold bg-accent text-white hover:bg-ink-900 transition-colors disabled:opacity-50"
+            className="w-full py-2.5 text-sm font-semibold rounded-md bg-accent text-white hover:brightness-95 transition-colors disabled:opacity-50 shadow-sm"
           >
             {loading ? "Saving…" : "Save and continue"}
           </button>
