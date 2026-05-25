@@ -38,6 +38,29 @@ export async function downloadBlob(path, filename) {
   URL.revokeObjectURL(url);
 }
 
+/** Authenticated GET returning a Blob (e.g. inline file preview). */
+export async function fetchAuthorizedBlob(pathWithQuery) {
+  const headers = {};
+  const token = getToken();
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const res = await fetch(`${API_BASE}${pathWithQuery}`, { headers, credentials: "include" });
+  if (!res.ok) {
+    let msg = "Could not load file";
+    try {
+      const t = await res.text();
+      const j = t ? JSON.parse(t) : null;
+      if (j?.error) msg = j.error;
+    } catch {
+      /* ignore */
+    }
+    const err = new Error(msg);
+    err.status = res.status;
+    throw err;
+  }
+  const blob = await res.blob();
+  return { blob, contentType: res.headers.get("content-type") || blob.type || "" };
+}
+
 export async function api(path, options = {}) {
   const method = (options.method || "GET").toUpperCase();
   const headers = { ...(options.headers || {}) };

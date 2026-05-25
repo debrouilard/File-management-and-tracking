@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 import { prisma } from "../utils/prisma.js";
 import { moveTempToFinal } from "../storage/localStorageAdapter.js";
-import { formatDisplayId, parseCombinedId, serializeFileRecord, serializeFileRecords } from "../utils/fileDisplay.js";
+import { parseCombinedId, serializeFileRecord, serializeFileRecords } from "../utils/fileDisplay.js";
 import {
   buildFileMessage,
   createNotificationsForUsers,
@@ -62,7 +62,7 @@ function isSenderSide(user, file) {
 export async function createFileRecord(
   reqCtx,
   user,
-  { title, description, priority },
+  { title, description, priority, documentCode },
   tempAbsolutePath,
   originalName,
   mimeType,
@@ -79,6 +79,7 @@ export async function createFileRecord(
     prisma.$transaction(async (tx) => {
       const created = await tx.fileRecord.create({
         data: {
+          documentCode,
           title: title.trim(),
           description: description?.trim() || null,
           priority,
@@ -119,7 +120,7 @@ export async function createFileRecord(
     resourceType: "FILE",
     resourceId: record.id,
     metadata: {
-      displayId: formatDisplayId(record.senderDept.prefix, record.fileNumber),
+      displayId: record.documentCode,
       title: record.title,
       priority: record.priority,
     },
@@ -134,7 +135,7 @@ export async function createFileRecord(
         userId,
         type: "HIGH_PRIORITY",
         title: "High priority file registered",
-        message: buildFileMessage(record.senderDept.prefix, record.fileNumber, record.title),
+        message: buildFileMessage(record.documentCode, record.title),
         fileRecordId: record.id,
       }))
     );
@@ -203,14 +204,14 @@ export async function sendFile(reqCtx, user, fileRecordId, receiverDeptId, io) {
     resourceId: file.id,
     metadata: {
       to: receiver.prefix,
-      displayId: formatDisplayId(updated.senderDept.prefix, updated.fileNumber),
+      displayId: updated.documentCode,
     },
     ipAddress: reqCtx.ip,
     userAgent: reqCtx.get("user-agent"),
   });
 
   const targets = await usersInDepartment(receiverDeptId);
-  const msg = buildFileMessage(updated.senderDept.prefix, updated.fileNumber, `Sent from ${updated.senderDept.prefix} — ${updated.title}`);
+  const msg = buildFileMessage(updated.documentCode, `Sent from ${updated.senderDept.prefix} — ${updated.title}`);
   const notes = await createNotificationsForUsers(
     targets.map((userId) => ({
       userId,
@@ -257,16 +258,15 @@ export async function markReceivedIfViewer(reqCtx, user, file, io) {
     action: "FILE_RECEIVED",
     resourceType: "FILE",
     resourceId: file.id,
-    metadata: { displayId: formatDisplayId(updated.senderDept.prefix, updated.fileNumber) },
+    metadata: { displayId: updated.documentCode },
     ipAddress: reqCtx.ip,
     userAgent: reqCtx.get("user-agent"),
   });
 
   const targets = await usersInDepartment(file.senderDeptId);
   const msg = buildFileMessage(
-    updated.receiverDept.prefix,
-    updated.fileNumber,
-    `Received by ${updated.receiverDept.prefix} — ${updated.title}`
+    updated.documentCode,
+    `Received by ${updated.receiverDept?.prefix ?? "?"} — ${updated.title}`
   );
   const notes = await createNotificationsForUsers(
     targets.map((userId) => ({
@@ -366,7 +366,7 @@ export async function updateFileStatus(reqCtx, user, fileRecordId, nextStatus, i
     title = "File rejected";
   }
 
-  const msg = buildFileMessage(updated.senderDept.prefix, updated.fileNumber, `${title} — ${updated.title}`);
+  const msg = buildFileMessage(updated.documentCode, `${title} — ${updated.title}`);
   const senderTargets = await usersInDepartment(file.senderDeptId);
   const notes = await createNotificationsForUsers(
     senderTargets.map((userId) => ({
@@ -431,7 +431,9 @@ function buildListWhere(user, query) {
         ],
       });
     } else if (/^\d+$/.test(term)) {
-      and.push({ fileNumber: parseInt(term, 10) });
+      and.push({
+        OR: [{ documentCode: term }, { fileNumber: parseInt(term, 10) }],
+      });
     } else {
       and.push({
         OR: [
@@ -541,7 +543,7 @@ export async function deleteFileRecord(reqCtx, user, fileRecordId) {
     action: "FILE_DELETED",
     resourceType: "FILE",
     resourceId: fileRecordId,
-    metadata: { displayId: formatDisplayId(file.senderDept.prefix, file.fileNumber) },
+    metadata: { displayId: file.documentCode },
     ipAddress: reqCtx.ip,
     userAgent: reqCtx.get("user-agent"),
   });

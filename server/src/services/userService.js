@@ -117,14 +117,18 @@ export async function bulkImportUsersFromCsv(buffer, { actorUserId }, reqCtx) {
   return { created: created.length, failed: errors.length, errors };
 }
 
-export async function updateUser(userId, { name, role, departmentId }, reqCtx) {
+export async function updateUser(userId, { name, email, role, departmentId }, reqCtx) {
+  const data = {
+    name: String(name).trim(),
+    role,
+    departmentId,
+  };
+  if (email != null && String(email).trim()) {
+    data.email = String(email).trim().toLowerCase();
+  }
   const updated = await prisma.user.update({
     where: { id: userId },
-    data: {
-      name: String(name).trim(),
-      role,
-      departmentId,
-    },
+    data,
     select: {
       id: true,
       name: true,

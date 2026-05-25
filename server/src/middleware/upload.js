@@ -9,8 +9,18 @@ const maxBytes = maxMb * 1024 * 1024;
 
 const allowedMime = new Set([
   "application/pdf",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "image/jpeg",
+  "image/jpg",
 ]);
+
+function isAllowedUpload(file) {
+  const mime = String(file.mimetype || "").toLowerCase();
+  const name = String(file.originalname || "").toLowerCase();
+  if (allowedMime.has(mime)) return true;
+  if (name.endsWith(".pdf") && (mime === "application/octet-stream" || !mime)) return true;
+  if ((name.endsWith(".jpg") || name.endsWith(".jpeg")) && (mime === "application/octet-stream" || !mime)) return true;
+  return false;
+}
 
 const tmpRoot = path.join(process.cwd(), "uploads", "tmp");
 fs.mkdirSync(tmpRoot, { recursive: true });
@@ -26,8 +36,10 @@ export const tempUpload = multer({
   }),
   limits: { fileSize: maxBytes, files: 1 },
   fileFilter(_req, file, cb) {
-    if (!allowedMime.has(file.mimetype)) {
-      return cb(new Error("Only PDF and DOCX files are allowed"));
+    if (!isAllowedUpload(file)) {
+      const e = new Error("Only PDF and JPG/JPEG files are allowed");
+      e.status = 400;
+      return cb(e);
     }
     cb(null, true);
   },

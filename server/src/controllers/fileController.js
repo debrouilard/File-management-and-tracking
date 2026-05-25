@@ -15,6 +15,16 @@ import {
   updateFileStatus,
 } from "../services/fileService.js";
 
+function validateDocumentCode(raw) {
+  const s = String(raw ?? "").trim();
+  if (!/^\d{1,20}$/.test(s)) {
+    const err = new Error("Document ID must be numbers only (1–20 digits)");
+    err.status = 400;
+    throw err;
+  }
+  return s;
+}
+
 function validateMultipartMeta(body) {
   const title = (body.title || "").trim();
   if (title.length < 2 || title.length > 200) {
@@ -34,14 +44,15 @@ function validateMultipartMeta(body) {
     err.status = 400;
     throw err;
   }
-  return { title, description: desc || undefined, priority };
+  const documentCode = validateDocumentCode(body.documentCode ?? body.documentId);
+  return { title, description: desc || undefined, priority, documentCode };
 }
 
 export async function postFile(req, res, next) {
   const upload = tempUpload.single("document");
   upload(req, res, async (err) => {
     if (err) return next(err);
-    if (!req.file) return res.status(400).json({ error: "A PDF or DOCX document is required" });
+    if (!req.file) return res.status(400).json({ error: "A PDF or JPG/JPEG document is required" });
     try {
       const meta = validateMultipartMeta(req.body);
       const record = await createFileRecord(
@@ -159,6 +170,13 @@ export async function getDownload(req, res, next) {
     const abs = path.join(process.cwd(), file.filePath);
     if (!fs.existsSync(abs)) {
       return res.status(404).json({ error: "File missing on disk" });
+    }
+    const inline = String(req.query.inline || "") === "true";
+    if (inline) {
+      const mime = file.mimeType || "application/octet-stream";
+      res.setHeader("Content-Type", mime);
+      res.setHeader("Content-Disposition", `inline; filename="${encodeURIComponent(file.originalName)}"`);
+      return res.sendFile(abs);
     }
     res.download(abs, file.originalName);
   } catch (e) {

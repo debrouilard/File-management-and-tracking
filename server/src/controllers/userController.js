@@ -37,8 +37,8 @@ export async function postBulkUsers(req, res, next) {
 
 export async function patchUser(req, res, next) {
   try {
-    const { name, role, departmentId } = req.body;
-    const user = await updateUser(req.params.id, { name, role, departmentId }, req);
+    const { name, email, role, departmentId } = req.body;
+    const user = await updateUser(req.params.id, { name, email, role, departmentId }, req);
     res.json(user);
   } catch (e) {
     next(e);

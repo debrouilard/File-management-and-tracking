@@ -2,19 +2,40 @@ import bcrypt from "bcryptjs";
 import { prisma } from "../utils/prisma.js";
 import { writeAudit } from "./auditService.js";
 
-export async function createPasswordResetRequest(emailRaw, reqCtx) {
-  const email = String(emailRaw || "").trim().toLowerCase();
-  if (!email) {
-    const err = new Error("Email is required");
+async function resolveUserFromIdentifier(raw) {
+  const trimmed = String(raw || "").trim();
+  if (!trimmed) return { user: null, emailForRecord: "" };
+
+  const asEmail = trimmed.toLowerCase();
+  let user = await prisma.user.findUnique({
+    where: { email: asEmail },
+    select: { id: true, email: true },
+  });
+
+  if (!user && !trimmed.includes("@")) {
+    user = await prisma.user.findFirst({
+      where: { name: { equals: trimmed, mode: "insensitive" } },
+      select: { id: true, email: true },
+    });
+  }
+
+  const emailForRecord = user?.email ?? (trimmed.includes("@") ? asEmail : trimmed);
+  return { user, emailForRecord };
+}
+
+export async function createPasswordResetRequest(identifierRaw, reqCtx) {
+  const trimmed = String(identifierRaw || "").trim();
+  if (!trimmed || trimmed.length < 3) {
+    const err = new Error("Enter your email address or username");
     err.status = 400;
     throw err;
   }
 
-  const user = await prisma.user.findUnique({ where: { email }, select: { id: true } });
+  const { user, emailForRecord } = await resolveUserFromIdentifier(trimmed);
 
   const created = await prisma.passwordResetRequest.create({
     data: {
-      email,
+      email: emailForRecord,
       userId: user?.id || null,
       status: "PENDING",
     },
@@ -25,7 +46,7 @@ export async function createPasswordResetRequest(emailRaw, reqCtx) {
     action: "PASSWORD_RESET_REQUESTED",
     resourceType: "PASSWORD_RESET",
     resourceId: created.id,
-    metadata: { email },
+    metadata: { identifier: trimmed, email: emailForRecord },
     ipAddress: reqCtx?.ip,
     userAgent: reqCtx?.get?.("user-agent"),
   });
@@ -34,13 +55,26 @@ export async function createPasswordResetRequest(emailRaw, reqCtx) {
   return { ok: true };
 }
 
-export async function listPasswordResetRequests({ status } = {}) {
+const resetListInclude = {
+  user: {
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      department: { select: { prefix: true, name: true } },
+    },
+  },
+  completedBy: { select: { id: true, name: true, email: true } },
+};
+
+export async function listPasswordResetRequests({ status, limit } = {}) {
   const where = {};
   if (status) where.status = status;
   return prisma.passwordResetRequest.findMany({
     where,
     orderBy: { createdAt: "desc" },
-    include: { user: { select: { id: true, name: true, email: true } } },
+    take: typeof limit === "number" && limit > 0 ? limit : undefined,
+    include: resetListInclude,
   });
 }
 

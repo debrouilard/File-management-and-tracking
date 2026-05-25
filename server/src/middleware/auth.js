@@ -1,4 +1,6 @@
+import jwt from "jsonwebtoken";
 import { verifyToken } from "../utils/jwt.js";
+import { logger } from "../utils/logger.js";
 
 export function requireAuth(req, res, next) {
   const header = req.headers.authorization;
@@ -15,7 +17,11 @@ export function requireAuth(req, res, next) {
       mustResetPassword: Boolean(payload.mustResetPassword),
     };
     next();
-  } catch {
+  } catch (err) {
+    if (err instanceof jwt.JsonWebTokenError || err instanceof jwt.TokenExpiredError) {
+      return res.status(401).json({ error: "Invalid or expired token" });
+    }
+    logger.error("Unexpected error in requireAuth:", err?.message || err);
     return res.status(401).json({ error: "Invalid token" });
   }
 }

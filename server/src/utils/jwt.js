@@ -1,12 +1,17 @@
 import jwt from "jsonwebtoken";
-
-const secret = process.env.JWT_SECRET;
-const expiresIn = process.env.JWT_EXPIRES_IN || "7d";
+import { env } from "../config/env.js";
 
 export function signToken(payload) {
-  return jwt.sign(payload, secret, { expiresIn });
+  try {
+    return jwt.sign(payload, env.jwtSecret, { expiresIn: env.jwtExpiresIn });
+  } catch (err) {
+    const e = new Error("Could not issue token");
+    e.status = 500;
+    e.cause = err;
+    throw e;
+  }
 }
 
 export function verifyToken(token) {
-  return jwt.verify(token, secret);
+  return jwt.verify(token, env.jwtSecret);
 }

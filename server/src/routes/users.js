@@ -27,6 +27,7 @@ r.post("/bulk", csvUpload.single("file"), postBulkUsers);
 r.patch(
   "/:id",
   body("name").isString().trim().isLength({ min: 2, max: 120 }),
+  body("email").isEmail().normalizeEmail(),
   body("role").isIn(["ADMIN", "DEPARTMENT_HEAD", "STAFF"]),
   body("departmentId").isString().notEmpty(),
   validateRequest,

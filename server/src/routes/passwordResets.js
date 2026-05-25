@@ -11,7 +11,13 @@ const r = Router();
 
 r.use(requireAuth, requirePasswordResetDone, requireAdmin);
 
-r.get("/", query("status").optional().isString(), validateRequest, getPasswordResetRequests);
+r.get(
+  "/",
+  query("status").optional().isString(),
+  query("limit").optional().isInt({ min: 1, max: 200 }),
+  validateRequest,
+  getPasswordResetRequests
+);
 
 r.post(
   "/:id/complete",

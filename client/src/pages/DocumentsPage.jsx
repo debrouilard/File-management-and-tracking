@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../services/api.js";
+import { useAuth } from "../context/AuthContext.jsx";
+import { FileViewModal } from "../components/FileViewModal.jsx";
 
 function statusBadge(status) {
   const s = String(status || "");
@@ -41,7 +43,8 @@ function FileIcon() {
 }
 
 export function DocumentsPage() {
-  const [tab, setTab] = useState("all"); // all | sent | received
+  const { user } = useAuth();
+  const [tab, setTab] = useState("all");
   const [q, setQ] = useState("");
   const [departmentId, setDepartmentId] = useState("");
   const [sort, setSort] = useState("newest");
@@ -49,6 +52,8 @@ export function DocumentsPage() {
   const [rows, setRows] = useState([]);
   const [openId, setOpenId] = useState(null);
   const [error, setError] = useState("");
+  const [viewOpen, setViewOpen] = useState(false);
+  const [viewTarget, setViewTarget] = useState(null);
 
   useEffect(() => {
     api("/departments")
@@ -71,21 +76,42 @@ export function DocumentsPage() {
   }, [q, departmentId, sort]);
 
   const filtered = useMemo(() => {
-    if (tab === "sent") return rows.filter((r) => r.status === "SENT");
-    if (tab === "received")
-      return rows.filter((r) => ["SENT", "RECEIVED", "UNDER_REVIEW", "APPROVED", "REJECTED"].includes(r.status));
+    if (tab === "all") return rows;
+    if (user?.role === "ADMIN") {
+      if (tab === "sent") return rows.filter((r) => r.senderDeptId);
+      if (tab === "received") return rows.filter((r) => r.receiverDeptId);
+      return rows;
+    }
+    if (tab === "sent") return rows.filter((r) => r.senderDeptId === user?.departmentId);
+    if (tab === "received") return rows.filter((r) => r.receiverDeptId === user?.departmentId);
     return rows;
-  }, [rows, tab]);
+  }, [rows, tab, user]);
+
+  function openView(f) {
+    setViewTarget({ id: f.id, name: f.originalName || f.title, mimeType: f.mimeType });
+    setViewOpen(true);
+  }
 
   return (
     <div className="grid grid-cols-12 gap-4">
-      <div className="col-span-12 lg:col-span-10 bg-white border border-line p-4">
+      <FileViewModal
+        open={viewOpen}
+        onClose={() => {
+          setViewOpen(false);
+          setViewTarget(null);
+        }}
+        fileId={viewTarget?.id}
+        fileName={viewTarget?.name}
+        mimeType={viewTarget?.mimeType}
+      />
+
+      <div className="col-span-12 lg:col-span-10 bg-white border border-line p-4 rounded-md shadow-sm">
         <div className="mb-4">
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search by ID or File Name"
-            className="w-full border border-line px-4 py-2 text-sm bg-white focus:outline-none"
+            placeholder="Search by Document ID or file name"
+            className="w-full border border-line px-4 py-2 text-sm bg-white rounded-md focus:outline-none focus:ring-2 focus:ring-accent/20"
           />
         </div>
 
@@ -95,7 +121,7 @@ export function DocumentsPage() {
             <select
               value={departmentId}
               onChange={(e) => setDepartmentId(e.target.value)}
-              className="w-full border border-line px-3 py-2 text-sm bg-white"
+              className="w-full border border-line px-3 py-2 text-sm bg-white rounded-md"
             >
               <option value="">All</option>
               {departments.map((d) => (
@@ -110,7 +136,7 @@ export function DocumentsPage() {
             <select
               value={sort}
               onChange={(e) => setSort(e.target.value)}
-              className="w-full border border-line px-3 py-2 text-sm bg-white"
+              className="w-full border border-line px-3 py-2 text-sm bg-white rounded-md"
             >
               <option value="newest">Newest</option>
               <option value="oldest">Oldest</option>
@@ -118,7 +144,7 @@ export function DocumentsPage() {
           </div>
         </div>
 
-        <div className="flex gap-2 mb-4">
+        <div className="flex flex-wrap gap-2 mb-4">
           {[
             ["all", "All Files"],
             ["sent", "Sent Files"],
@@ -132,8 +158,8 @@ export function DocumentsPage() {
                 setOpenId(null);
               }}
               className={[
-                "px-4 py-2 text-sm border border-line",
-                tab === id ? "bg-brand-hover" : "bg-white",
+                "px-4 py-2 text-sm border rounded-md transition-colors",
+                tab === id ? "bg-brand-hover border-brand-sidebar text-ink-900" : "bg-white border-line hover:bg-surface",
               ].join(" ")}
             >
               {label}
@@ -143,7 +169,7 @@ export function DocumentsPage() {
 
         {error && <p className="text-sm text-red-700 mb-3">{error}</p>}
 
-        <div className="border border-line">
+        <div className="border border-line rounded-md overflow-hidden">
           <div className="grid grid-cols-12 bg-brand-sidebar text-white border-b border-line text-xs uppercase tracking-wide">
             <div className="col-span-3 px-3 py-2 font-semibold">Document ID</div>
             <div className="col-span-4 px-3 py-2 font-semibold">File Name</div>
@@ -157,22 +183,22 @@ export function DocumentsPage() {
               <div key={f.id} className="border-b border-line last:border-0">
                 <button
                   type="button"
-                  className="w-full text-left grid grid-cols-12 items-center hover:bg-surface"
+                  className="w-full text-left grid grid-cols-12 items-center hover:bg-surface/90 transition-colors"
                   onClick={() => setOpenId(open ? null : f.id)}
                 >
                   <div className="col-span-3 px-3 py-3 font-mono text-xs">{f.displayId}</div>
-                  <div className="col-span-4 px-3 py-3 flex items-center gap-2">
+                  <div className="col-span-4 px-3 py-3 flex items-center gap-2 min-w-0">
                     <FileIcon />
                     <span className="font-medium text-ink-900 truncate">{f.title}</span>
                   </div>
                   <div className="col-span-2 px-3 py-3 text-sm text-ink-700">
                     {new Date(f.createdAt).toLocaleString()}
                   </div>
-                  <div className="col-span-2 px-3 py-3 text-sm text-ink-700">{f.senderDept?.name}</div>
+                  <div className="col-span-2 px-3 py-3 text-sm text-ink-700 truncate">{f.senderDept?.name}</div>
                   <div className="col-span-1 px-3 py-3">{statusBadge(f.status)}</div>
                 </button>
                 {open && (
-                  <div className="px-4 py-3 bg-surface border-t border-line text-sm space-y-2">
+                  <div className="px-4 py-4 bg-surface border-t border-line text-sm space-y-3">
                     <div>
                       <span className="text-ink-500">Full Description: </span>
                       <span className="text-ink-900">{f.description || "—"}</span>
@@ -191,6 +217,18 @@ export function DocumentsPage() {
                         <span className="text-ink-900 font-medium">{f.status.replace(/_/g, " ")}</span>
                       </div>
                     </div>
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openView(f);
+                        }}
+                        className="px-4 py-2 text-sm font-semibold rounded-md bg-white border-2 border-accent text-accent hover:bg-accent/5 shadow-sm"
+                      >
+                        View File
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -202,4 +240,3 @@ export function DocumentsPage() {
     </div>
   );
 }
-

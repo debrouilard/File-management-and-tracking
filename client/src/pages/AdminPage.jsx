@@ -50,6 +50,9 @@ export function AdminPage() {
   });
   const [deptForm, setDeptForm] = useState({ name: "", prefix: "" });
   const [csvFile, setCsvFile] = useState(null);
+  const [userEditModal, setUserEditModal] = useState(null);
+  const [editForm, setEditForm] = useState({ name: "", email: "", role: "STAFF", departmentId: "" });
+  const [editBusy, setEditBusy] = useState(false);
 
   async function load() {
     const [u, d, pending, history] = await Promise.all([
@@ -258,78 +261,75 @@ export function AdminPage() {
         </form>
       </SectionCard>
 
-      <SectionCard title="Password Reset Requests">
-        <p className="text-xs text-ink-500 mb-4 max-w-3xl">
-          Pending requests appear when a user submits a reset from the login page. Set a temporary password to complete
-          the request; the user must sign in and choose a new password before using the system.
-        </p>
-        <div className="flex gap-2 mb-4">
-          <button
-            type="button"
-            className={`px-3 py-1.5 text-xs font-semibold rounded-md border transition-colors ${
-              resetTab === "pending"
-                ? "bg-brand-sidebar text-white border-brand-sidebar"
-                : "bg-white text-ink-700 border-line hover:bg-surface"
-            }`}
-            onClick={() => setResetTab("pending")}
-          >
-            Pending ({resetRequestsPending.length})
-          </button>
-          <button
-            type="button"
-            className={`px-3 py-1.5 text-xs font-semibold rounded-md border transition-colors ${
-              resetTab === "history"
-                ? "bg-brand-sidebar text-white border-brand-sidebar"
-                : "bg-white text-ink-700 border-line hover:bg-surface"
-            }`}
-            onClick={() => setResetTab("history")}
-          >
-            Completed (recent)
-          </button>
+      <div className="mb-8 max-w-5xl rounded-lg border border-line bg-white shadow-sm overflow-hidden">
+        <div className="px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 bg-slate-50 border-b border-line">
+          <div>
+            <h2 className="text-sm font-semibold text-ink-950">Password resets</h2>
+            <p className="text-[11px] text-ink-500 mt-0.5 max-w-xl">
+              Queue from login “Forgot password”. Completing sets a temporary password; the user must change it on next login.
+            </p>
+          </div>
+          <div className="flex gap-1.5">
+            <button
+              type="button"
+              className={`px-2.5 py-1 text-[11px] font-semibold rounded-md border transition-colors ${
+                resetTab === "pending"
+                  ? "bg-accent text-white border-accent"
+                  : "bg-white text-ink-600 border-line hover:bg-surface"
+              }`}
+              onClick={() => setResetTab("pending")}
+            >
+              Pending ({resetRequestsPending.length})
+            </button>
+            <button
+              type="button"
+              className={`px-2.5 py-1 text-[11px] font-semibold rounded-md border transition-colors ${
+                resetTab === "history"
+                  ? "bg-accent text-white border-accent"
+                  : "bg-white text-ink-600 border-line hover:bg-surface"
+              }`}
+              onClick={() => setResetTab("history")}
+            >
+              History
+            </button>
+          </div>
         </div>
-
-        {resetTab === "pending" && (
-          <div className="overflow-x-auto border border-line rounded-md">
-            <table className="w-full text-sm min-w-[640px]">
-              <thead className="bg-brand-sidebar text-white text-xs uppercase">
+        <div className="p-3 max-h-[320px] overflow-auto">
+          {resetTab === "pending" && (
+            <table className="w-full text-xs min-w-[600px]">
+              <thead className="text-ink-500 uppercase tracking-wide border-b border-line">
                 <tr>
-                  <th className="px-3 py-2 text-left font-semibold">Status</th>
-                  <th className="px-3 py-2 text-left font-semibold">Submitted as</th>
-                  <th className="px-3 py-2 text-left font-semibold">Account</th>
-                  <th className="px-3 py-2 text-left font-semibold">Department</th>
-                  <th className="px-3 py-2 text-left font-semibold">Requested</th>
-                  <th className="px-3 py-2 text-right font-semibold w-[200px]">
-                    <span className="sr-only">Actions</span>
-                  </th>
+                  <th className="text-left py-2 pr-2 font-medium">Submitted</th>
+                  <th className="text-left py-2 pr-2 font-medium">User</th>
+                  <th className="text-left py-2 pr-2 font-medium">Dept</th>
+                  <th className="text-left py-2 pr-2 font-medium">When</th>
+                  <th className="text-right py-2 font-medium">Action</th>
                 </tr>
               </thead>
               <tbody>
                 {resetRequestsPending.map((r) => (
-                  <tr key={r.id} className="border-b border-line last:border-0">
-                    <td className="px-3 py-2">
-                      <span className="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium bg-amber-50 text-amber-900 border border-amber-200">
-                        Pending
-                      </span>
-                    </td>
-                    <td className="px-3 py-2 font-mono text-xs">{r.email}</td>
-                    <td className="px-3 py-2">
+                  <tr key={r.id} className="border-b border-line/80 last:border-0">
+                    <td className="py-2 pr-2 font-mono text-ink-800">{r.email}</td>
+                    <td className="py-2 pr-2 text-ink-700">
                       {r.user ? (
-                        <span>
+                        <>
                           {r.user.name}
-                          <span className="block text-xs text-ink-500">{r.user.email}</span>
-                        </span>
+                          <span className="block text-ink-500">{r.user.email}</span>
+                        </>
                       ) : (
-                        <span className="text-ink-500">No matching user</span>
+                        <span className="text-ink-400">No match</span>
                       )}
                     </td>
-                    <td className="px-3 py-2">{r.user?.department?.prefix || "—"}</td>
-                    <td className="px-3 py-2 whitespace-nowrap">{new Date(r.createdAt).toLocaleString()}</td>
-                    <td className="px-3 py-2 text-right">
+                    <td className="py-2 pr-2">{r.user?.department?.prefix || "—"}</td>
+                    <td className="py-2 pr-2 whitespace-nowrap text-ink-600">
+                      {new Date(r.createdAt).toLocaleString()}
+                    </td>
+                    <td className="py-2 text-right">
                       <button
                         type="button"
-                        className={ADMIN_PRIMARY_BTN}
+                        className="px-2.5 py-1 text-[11px] font-semibold rounded-md bg-accent text-white hover:brightness-95 disabled:opacity-40"
                         disabled={!r.userId}
-                        title={!r.userId ? "Cannot complete until a user account matches this request." : ""}
+                        title={!r.userId ? "No matching user for this request." : ""}
                         onClick={() => {
                           setTempPassword("");
                           setTempPasswordConfirm("");
@@ -340,69 +340,58 @@ export function AdminPage() {
                           });
                         }}
                       >
-                        Set password and complete
+                        Reset password
                       </button>
                     </td>
                   </tr>
                 ))}
                 {resetRequestsPending.length === 0 && (
                   <tr>
-                    <td className="px-3 py-6 text-ink-500" colSpan={6}>
-                      No pending reset requests.
+                    <td className="py-6 text-ink-500" colSpan={5}>
+                      No pending requests.
                     </td>
                   </tr>
                 )}
               </tbody>
             </table>
-          </div>
-        )}
-
-        {resetTab === "history" && (
-          <div className="overflow-x-auto border border-line rounded-md">
-            <table className="w-full text-sm min-w-[720px]">
-              <thead className="bg-brand-sidebar text-white text-xs uppercase">
+          )}
+          {resetTab === "history" && (
+            <table className="w-full text-xs min-w-[560px]">
+              <thead className="text-ink-500 uppercase tracking-wide border-b border-line">
                 <tr>
-                  <th className="px-3 py-2 text-left font-semibold">Status</th>
-                  <th className="px-3 py-2 text-left font-semibold">Submitted as</th>
-                  <th className="px-3 py-2 text-left font-semibold">User</th>
-                  <th className="px-3 py-2 text-left font-semibold">Requested</th>
-                  <th className="px-3 py-2 text-left font-semibold">Completed</th>
-                  <th className="px-3 py-2 text-left font-semibold">By</th>
+                  <th className="text-left py-2 pr-2 font-medium">Submitted</th>
+                  <th className="text-left py-2 pr-2 font-medium">User</th>
+                  <th className="text-left py-2 pr-2 font-medium">Completed</th>
+                  <th className="text-left py-2 font-medium">By</th>
                 </tr>
               </thead>
               <tbody>
                 {resetRequestsHistory.map((r) => (
-                  <tr key={r.id} className="border-b border-line last:border-0">
-                    <td className="px-3 py-2">
-                      <span className="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium bg-green-50 text-green-900 border border-green-200">
-                        Completed
-                      </span>
-                    </td>
-                    <td className="px-3 py-2 font-mono text-xs">{r.email}</td>
-                    <td className="px-3 py-2">{r.user?.name || "—"}</td>
-                    <td className="px-3 py-2 whitespace-nowrap">{new Date(r.createdAt).toLocaleString()}</td>
-                    <td className="px-3 py-2 whitespace-nowrap">
+                  <tr key={r.id} className="border-b border-line/80 last:border-0">
+                    <td className="py-2 pr-2 font-mono">{r.email}</td>
+                    <td className="py-2 pr-2">{r.user?.name || "—"}</td>
+                    <td className="py-2 pr-2 whitespace-nowrap">
                       {r.completedAt ? new Date(r.completedAt).toLocaleString() : "—"}
                     </td>
-                    <td className="px-3 py-2 text-xs">{r.completedBy?.name || "—"}</td>
+                    <td className="py-2">{r.completedBy?.name || "—"}</td>
                   </tr>
                 ))}
                 {resetRequestsHistory.length === 0 && (
                   <tr>
-                    <td className="px-3 py-6 text-ink-500" colSpan={6}>
-                      No completed requests in recent history.
+                    <td className="py-6 text-ink-500" colSpan={4}>
+                      No recent history.
                     </td>
                   </tr>
                 )}
               </tbody>
             </table>
-          </div>
-        )}
-      </SectionCard>
+          )}
+        </div>
+      </div>
 
       {completeResetModal && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-ink-950/40"
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-ink-950/45 backdrop-blur-[1px]"
           role="dialog"
           aria-modal="true"
           aria-labelledby="complete-reset-title"
@@ -410,14 +399,20 @@ export function AdminPage() {
             if (e.target === e.currentTarget && !completeResetBusy) setCompleteResetModal(null);
           }}
         >
-          <div className="w-full max-w-md bg-white rounded-lg border border-line shadow-xl" onMouseDown={(e) => e.stopPropagation()}>
-            <div className="px-4 h-[44px] flex items-center bg-brand-sidebar text-white rounded-t-lg">
-              <h2 id="complete-reset-title" className="text-sm font-semibold">
-                Complete password reset
+          <div
+            className="w-full max-w-md bg-white rounded-xl shadow-2xl border border-line border-l-4 border-l-accent overflow-hidden"
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <div className="px-5 py-4 border-b border-line bg-white">
+              <h2 id="complete-reset-title" className="text-base font-semibold text-ink-950">
+                Set temporary password
               </h2>
+              <p className="text-xs text-ink-500 mt-1">
+                The user will log in with this password, then be required to choose a new one.
+              </p>
             </div>
             <form
-              className="p-4 space-y-4"
+              className="p-5 space-y-4"
               onSubmit={async (e) => {
                 e.preventDefault();
                 setError("");
@@ -446,21 +441,25 @@ export function AdminPage() {
                 }
               }}
             >
-              <p className="text-xs text-ink-500">
-                Request: <span className="font-mono text-ink-900">{completeResetModal.submittedAs}</span>
+              <div className="rounded-md bg-surface border border-line px-3 py-2 text-xs text-ink-600">
+                <p>
+                  <span className="font-medium text-ink-700">Request: </span>
+                  <span className="font-mono">{completeResetModal.submittedAs}</span>
+                </p>
                 {completeResetModal.userLabel && (
-                  <>
-                    <br />
-                    User: {completeResetModal.userLabel}
-                  </>
+                  <p className="mt-1">
+                    <span className="font-medium text-ink-700">Account: </span>
+                    {completeResetModal.userLabel}
+                  </p>
                 )}
-              </p>
+              </div>
               <div>
-                <label className="text-xs text-ink-500">Temporary password (min 8 characters)</label>
+                <label className="block text-xs font-medium text-ink-600 mb-1">Temporary password</label>
                 <input
                   type="password"
                   autoComplete="new-password"
-                  className="mt-1 w-full border border-line px-3 py-2 text-sm rounded-md"
+                  className="w-full border border-line px-3 py-2.5 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-accent/25"
+                  placeholder="Minimum 8 characters"
                   value={tempPassword}
                   onChange={(e) => setTempPassword(e.target.value)}
                   required
@@ -469,11 +468,11 @@ export function AdminPage() {
                 />
               </div>
               <div>
-                <label className="text-xs text-ink-500">Confirm temporary password</label>
+                <label className="block text-xs font-medium text-ink-600 mb-1">Confirm temporary password</label>
                 <input
                   type="password"
                   autoComplete="new-password"
-                  className="mt-1 w-full border border-line px-3 py-2 text-sm rounded-md"
+                  className="w-full border border-line px-3 py-2.5 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-accent/25"
                   value={tempPasswordConfirm}
                   onChange={(e) => setTempPasswordConfirm(e.target.value)}
                   required
@@ -481,17 +480,135 @@ export function AdminPage() {
                   disabled={completeResetBusy}
                 />
               </div>
-              <div className="flex justify-end gap-2 pt-2">
+              <div className="flex justify-end gap-2 pt-1">
                 <button
                   type="button"
-                  className="px-4 py-2 text-sm border border-line rounded-md hover:bg-surface"
+                  className="px-4 py-2 text-sm border border-line rounded-md hover:bg-surface text-ink-700"
                   disabled={completeResetBusy}
                   onClick={() => setCompleteResetModal(null)}
                 >
                   Cancel
                 </button>
-                <button type="submit" className={ADMIN_PRIMARY_BTN} disabled={completeResetBusy}>
-                  {completeResetBusy ? "Saving…" : "Complete & notify user"}
+                <button
+                  type="submit"
+                  className="px-4 py-2 text-sm font-semibold rounded-md bg-accent text-white hover:brightness-95 disabled:opacity-50"
+                  disabled={completeResetBusy}
+                >
+                  {completeResetBusy ? "Saving…" : "Complete reset"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {userEditModal && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-ink-950/45 backdrop-blur-[1px]"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="edit-user-title"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget && !editBusy) setUserEditModal(null);
+          }}
+        >
+          <div
+            className="w-full max-w-lg bg-white rounded-xl shadow-2xl border border-line border-l-4 border-l-accent overflow-hidden"
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <div className="px-5 py-4 border-b border-line">
+              <h2 id="edit-user-title" className="text-base font-semibold text-ink-950">
+                Edit user
+              </h2>
+              <p className="text-xs text-ink-500 mt-1">Update profile and assignment. Changes apply immediately.</p>
+            </div>
+            <form
+              className="p-5 space-y-4"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                setError("");
+                setMsg("");
+                setEditBusy(true);
+                try {
+                  await api(`/users/${userEditModal.id}`, {
+                    method: "PATCH",
+                    body: JSON.stringify({
+                      name: editForm.name.trim(),
+                      email: editForm.email.trim().toLowerCase(),
+                      role: editForm.role,
+                      departmentId: editForm.departmentId,
+                    }),
+                  });
+                  setMsg("User updated.");
+                  setUserEditModal(null);
+                  await load();
+                } catch (err) {
+                  setError(err.message);
+                } finally {
+                  setEditBusy(false);
+                }
+              }}
+            >
+              <div>
+                <label className="block text-xs font-medium text-ink-600 mb-1">Full name</label>
+                <input
+                  className="w-full border border-line px-3 py-2 text-sm rounded-md"
+                  value={editForm.name}
+                  onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-ink-600 mb-1">Email</label>
+                <input
+                  type="email"
+                  className="w-full border border-line px-3 py-2 text-sm rounded-md"
+                  value={editForm.email}
+                  onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))}
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-ink-600 mb-1">Role</label>
+                <select
+                  className="w-full border border-line px-3 py-2 text-sm rounded-md bg-white"
+                  value={editForm.role}
+                  onChange={(e) => setEditForm((f) => ({ ...f, role: e.target.value }))}
+                >
+                  <option value="STAFF">Staff</option>
+                  <option value="DEPARTMENT_HEAD">Department head</option>
+                  <option value="ADMIN">Admin</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-ink-600 mb-1">Department</label>
+                <select
+                  className="w-full border border-line px-3 py-2 text-sm rounded-md bg-white"
+                  value={editForm.departmentId}
+                  onChange={(e) => setEditForm((f) => ({ ...f, departmentId: e.target.value }))}
+                >
+                  {departments.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.prefix} — {d.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  className="px-4 py-2 text-sm border border-line rounded-md hover:bg-surface"
+                  disabled={editBusy}
+                  onClick={() => setUserEditModal(null)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 text-sm font-semibold rounded-md bg-accent text-white hover:brightness-95 disabled:opacity-50"
+                  disabled={editBusy}
+                >
+                  {editBusy ? "Saving…" : "Save changes"}
                 </button>
               </div>
             </form>
@@ -660,40 +777,15 @@ export function AdminPage() {
                           <button
                             type="button"
                             className="w-full text-left px-3 py-2 text-sm hover:bg-brand-hover"
-                            onClick={async () => {
+                            onClick={() => {
                               setOpenUserMenuId(null);
-                              const nextName = window.prompt("Update user name", u.name);
-                              if (nextName == null) return;
-                              const nextRole = window.prompt("Update role (ADMIN, DEPARTMENT_HEAD, STAFF)", u.role);
-                              if (nextRole == null) return;
-                              const nextDeptPrefix = window.prompt(
-                                "Update department prefix",
-                                u.department?.prefix || ""
-                              );
-                              if (nextDeptPrefix == null) return;
-                              const dept = departments.find(
-                                (d) => String(d.prefix).toUpperCase() === String(nextDeptPrefix).toUpperCase().trim()
-                              );
-                              if (!dept) {
-                                setError("Department prefix not found.");
-                                return;
-                              }
-                              setError("");
-                              setMsg("");
-                              try {
-                                await api(`/users/${u.id}`, {
-                                  method: "PATCH",
-                                  body: JSON.stringify({
-                                    name: nextName,
-                                    role: String(nextRole).toUpperCase().trim(),
-                                    departmentId: dept.id,
-                                  }),
-                                });
-                                setMsg("User updated.");
-                                await load();
-                              } catch (e) {
-                                setError(e.message);
-                              }
+                              setEditForm({
+                                name: u.name,
+                                email: u.email,
+                                role: u.role,
+                                departmentId: u.departmentId,
+                              });
+                              setUserEditModal(u);
                             }}
                           >
                             Update

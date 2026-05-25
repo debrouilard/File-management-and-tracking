@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api, downloadBlob } from "../services/api.js";
 import { useAuth } from "../context/AuthContext.jsx";
+import { FileViewModal } from "../components/FileViewModal.jsx";
 
 function Timeline({ history }) {
   const rows = [...history].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
@@ -34,6 +35,7 @@ export function FileTrackingPage() {
   const [receiverId, setReceiverId] = useState("");
   const [error, setError] = useState("");
   const [msg, setMsg] = useState("");
+  const [viewOpen, setViewOpen] = useState(false);
 
   async function reload() {
     const f = await api(`/files/${id}`);
@@ -143,6 +145,13 @@ export function FileTrackingPage() {
 
   return (
     <div>
+      <FileViewModal
+        open={viewOpen}
+        onClose={() => setViewOpen(false)}
+        fileId={file?.id}
+        fileName={file?.originalName || file?.title}
+        mimeType={file?.mimeType}
+      />
       <p className="text-xs text-ink-500 mb-2">
         <Link to="/dashboard" className="hover:text-accent">
           Dashboard
@@ -186,11 +195,18 @@ export function FileTrackingPage() {
             </div>
           )}
         </div>
-        <div className="border border-line p-4 text-sm space-y-3">
+        <div className="border border-line p-4 text-sm space-y-3 rounded-md bg-white shadow-sm">
+          <button
+            type="button"
+            onClick={() => setViewOpen(true)}
+            className="w-full text-center py-2 rounded-md bg-white border-2 border-accent text-accent font-semibold hover:bg-accent/5 transition-colors"
+          >
+            View file
+          </button>
           <button
             type="button"
             onClick={() => downloadBlob(`/files/${file.id}/download`, file.originalName)}
-            className="w-full text-center py-2 border border-accent text-accent hover:bg-accent hover:text-white transition-colors"
+            className="w-full text-center py-2 border border-line text-ink-800 hover:bg-surface rounded-md transition-colors"
           >
             Download attachment
           </button>

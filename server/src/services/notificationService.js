@@ -1,5 +1,4 @@
 import { prisma } from "../utils/prisma.js";
-import { formatDisplayId } from "../utils/fileDisplay.js";
 
 export async function createNotificationsForUsers(entries) {
   const unique = entries.filter(Boolean);
@@ -43,7 +42,7 @@ export function emitToUsers(io, eventName, notifications) {
   }
 }
 
-export function buildFileMessage(prefix, fileNumber, suffix) {
-  const id = formatDisplayId(prefix, fileNumber);
+export function buildFileMessage(documentCode, suffix) {
+  const id = String(documentCode || "").trim() || "—";
   return `${id} — ${suffix}`;
 }

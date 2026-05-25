@@ -7,10 +7,10 @@ Secure, full-stack document management and inter-department file tracking: **Exp
 - **RBAC**: `ADMIN`, `DEPARTMENT_HEAD`, `STAFF` with department-scoped access for non-admins.
 - **Files**: Auto-increment numeric ID + department prefix; display format `PREFIX-NUMBER` (e.g. `REG-42`).
 - **Lifecycle**: Draft → Sent → Received → Under review → Approved / Rejected → Archived.
-- **Uploads**: PDF/DOCX, size limits, stored under `server/uploads/` (not publicly served); download is authorized per request.
+- **Uploads**: PDF and JPG/JPEG only, size limits, stored under `server/uploads/` (not publicly served); download and inline preview are authorized per request.
 - **Notifications**: In-app (DB) with read/unread; Socket.IO push (`notification` event).
 - **Audit**: Append-only `AuditLog` entries for security-relevant actions.
-- **CSRF**: Double-submit cookie + `X-CSRF-Token` on mutating API calls (with `credentials: "include"` from the client).
+- **Auth**: JWT in `Authorization: Bearer` (no cookie session). CSRF is not used; mutating requests rely on the bearer token, which third-party sites cannot attach cross-origin without XSS.
 
 ## Prerequisites
 
@@ -28,7 +28,7 @@ Create a database and set `DATABASE_URL` (see `server/.env.example`).
 ```bash
 cd server
 cp .env.example .env
-# Edit .env — set DATABASE_URL and JWT_SECRET (example secret is for local dev only)
+# Edit .env — set DATABASE_URL, JWT_SECRET, and CLIENT_ORIGINS (see comments in .env.example)
 npm install
 npx prisma migrate dev --name init
 npm run prisma:seed
@@ -58,8 +58,8 @@ Change the password after first use in production.
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/health` | Health check |
-| GET | `/auth/csrf` | Issue CSRF cookie + token |
+| GET | `/health` | Liveness (no DB check) |
+| GET | `/ready` | Readiness (verifies PostgreSQL) |
 | POST | `/auth/login` | Login (returns JWT + user) |
 | POST | `/auth/change-password` | Change password (clears `mustResetPassword`) |
 | GET | `/departments` | List departments |
@@ -78,7 +78,7 @@ Change the password after first use in production.
 | GET | `/notifications` | In-app notifications |
 | GET | `/audit` | Audit log (admin) |
 
-All authenticated requests **except** `GET /auth/csrf` use `Authorization: Bearer <token>`. Mutating requests also send `X-CSRF-Token` from the CSRF endpoint (handled automatically by `client/src/services/api.js`).
+All authenticated requests send `Authorization: Bearer <token>`. Configure CORS with `CLIENT_ORIGINS` (comma-separated) or rely on dev defaults including `http://localhost:3000` and `http://localhost:5173`. Use `credentials: "include"` on fetch if you add cookie-based features later.
 
 ## CSV bulk import format
 
@@ -91,7 +91,7 @@ Jane Doe,jane@school.edu,TempPass123!,STAFF,REG
 
 - **Secrets**: Use environment variables; never commit real `JWT_SECRET` or DB credentials.
 - **Encryption at rest**: Rely on database and disk encryption at the infrastructure layer; swap `server/src/storage/localStorageAdapter.js` for a cloud adapter when needed.
-- **Production**: Use HTTPS, strict `CLIENT_ORIGIN`, `secure` cookies, and consider shorter `JWT_EXPIRES_IN` plus refresh tokens.
+- **Production**: Use HTTPS, set `CLIENT_ORIGINS` to your real web origins (not `*`), short `JWT_EXPIRES_IN`, and consider refresh tokens stored in httpOnly cookies (then reintroduce CSRF for cookie-mutating routes only).
 
 ## Project layout
 

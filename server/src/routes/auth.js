@@ -25,7 +25,7 @@ r.post(
 
 r.post(
   "/forgot-password",
-  body("email").isEmail().normalizeEmail(),
+  body("email").trim().isLength({ min: 3, max: 254 }).withMessage("Enter your email address or username"),
   validateRequest,
   postForgotPassword
 );
