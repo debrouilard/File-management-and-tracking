@@ -1,0 +1,163 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Department {
+  id            String         @id @default(cuid())
+  name          String
+  prefix        String         @unique
+  createdAt     DateTime       @default(now())
+  receivedFiles FileRecord[]   @relation("ReceiverDept")
+  sentFiles     FileRecord[]   @relation("SenderDept")
+  transfersFrom FileTransfer[] @relation("XferFrom")
+  transfersTo   FileTransfer[] @relation("XferTo")
+  users         User[]
+}
+
+model User {
+  id                      String                 @id @default(cuid())
+  name                    String
+  email                   String                 @unique
+  password                String
+  role                    Role
+  departmentId            String
+  mustResetPassword       Boolean                @default(true)
+  createdAt               DateTime               @default(now())
+  updatedAt               DateTime               @updatedAt
+  auditLogs               AuditLog[]
+  createdFiles            FileRecord[]           @relation("CreatedBy")
+  fileTransfers           FileTransfer[]
+  notifications           Notification[]
+  passwordResetsCompleted PasswordResetRequest[] @relation("PasswordResetCompletedBy")
+  passwordResetRequests   PasswordResetRequest[] @relation("PasswordResetRequestUser")
+  department              Department             @relation(fields: [departmentId], references: [id])
+}
+
+model FileRecord {
+  id             String         @id @default(cuid())
+  fileNumber     Int            @unique @default(autoincrement())
+  title          String
+  description    String?
+  priority       FilePriority   @default(MEDIUM)
+  status         FileStatus     @default(DRAFT)
+  senderDeptId   String
+  receiverDeptId String?
+  createdById    String
+  filePath       String
+  originalName   String
+  mimeType       String?
+  sizeBytes      Int?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  createdBy      User           @relation("CreatedBy", fields: [createdById], references: [id])
+  receiverDept   Department?    @relation("ReceiverDept", fields: [receiverDeptId], references: [id])
+  senderDept     Department     @relation("SenderDept", fields: [senderDeptId], references: [id])
+  transfers      FileTransfer[]
+  notifications  Notification[]
+
+  @@index([senderDeptId])
+  @@index([receiverDeptId])
+  @@index([status])
+  @@index([priority])
+  @@index([createdAt])
+}
+
+model FileTransfer {
+  id                  String     @id @default(cuid())
+  fileRecordId        String
+  fromDeptId          String
+  toDeptId            String
+  transferredByUserId String
+  createdAt           DateTime   @default(now())
+  fileRecord          FileRecord @relation(fields: [fileRecordId], references: [id], onDelete: Cascade)
+  fromDept            Department @relation("XferFrom", fields: [fromDeptId], references: [id])
+  toDept              Department @relation("XferTo", fields: [toDeptId], references: [id])
+  transferredBy       User       @relation(fields: [transferredByUserId], references: [id])
+
+  @@index([fileRecordId])
+  @@index([toDeptId])
+}
+
+model Notification {
+  id           String           @id @default(cuid())
+  userId       String
+  type         NotificationType
+  title        String
+  message      String
+  fileRecordId String?
+  read         Boolean          @default(false)
+  createdAt    DateTime         @default(now())
+  fileRecord   FileRecord?      @relation(fields: [fileRecordId], references: [id])
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
+}
+
+model AuditLog {
+  id           String   @id @default(cuid())
+  userId       String?
+  action       String
+  resourceType String
+  resourceId   String?
+  metadata     Json?
+  ipAddress    String?
+  userAgent    String?
+  createdAt    DateTime @default(now())
+  user         User?    @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([resourceType, resourceId])
+  @@index([createdAt])
+}
+
+model PasswordResetRequest {
+  id            String    @id @default(cuid())
+  email         String
+  userId        String?
+  status        String    @default("PENDING")
+  completedById String?
+  completedAt   DateTime?
+  createdAt     DateTime  @default(now())
+  completedBy   User?     @relation("PasswordResetCompletedBy", fields: [completedById], references: [id])
+  user          User?     @relation("PasswordResetRequestUser", fields: [userId], references: [id])
+
+  @@index([email])
+  @@index([status])
+  @@index([createdAt])
+}
+
+enum Role {
+  ADMIN
+  DEPARTMENT_HEAD
+  STAFF
+}
+
+enum FilePriority {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum FileStatus {
+  DRAFT
+  SENT
+  RECEIVED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  ARCHIVED
+}
+
+enum NotificationType {
+  FILE_SENT
+  FILE_RECEIVED
+  STATUS_CHANGED
+  APPROVAL
+  REJECTION
+  HIGH_PRIORITY
+}
